@@ -20,8 +20,7 @@
 project = 'OCloC'
 copyright = '2021, David Naranjo'
 author = 'David Naranjo'
-html_logo = 
-
+#html_logo =
 # The full version, including alpha/beta/rc tags
 release = '1'
 
@@ -48,11 +47,30 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-import sphinx_pdj_theme
-html_theme = 'sphinx_pdj_theme'
-html_theme_path = [sphinx_pdj_theme.get_html_theme_path()]
+import sphinx_bootstrap_theme
+html_theme = 'bootstrap'
+html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
+html_theme_options = {
+#'bootswatch_theme': "cosmo",
+'bootswatch_theme': "flatly",
+#'bootswatch_theme': "superhero",
+#'navbar_class': "navbar navbar-inverse",
+#'globaltoc_depth': 4,
+#'bootswatch_theme': "united",
+'bootstrap_version': "3",
+'navbar_site_name': "More",
+
+#'source_link_position': "footer"
+#'navbar_fixed_top': "false"
+}
+#import sphinx_pdj_theme
+#html_theme = 'alabaster'
+#html_theme = 'sphinx_pdj_theme'
+#html_theme_path = [sphinx_pdj_theme.get_html_theme_path()]
+
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-#html_static_path = ['_static']
+html_static_path = ['_static']
+html_logo = "./_static/logo_ocloc1.png"
