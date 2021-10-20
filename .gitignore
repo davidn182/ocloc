@@ -8,6 +8,7 @@ __pycache__/
 
 #M OS
 .DS_Store
+
 # Distribution / packaging
 .Python
 build/
