@@ -13,7 +13,6 @@
 # import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
-import sphinx_bootstrap_theme
 
 # -- Project information -----------------------------------------------------
 
@@ -22,7 +21,8 @@ copyright = '2021, David Naranjo'
 author = 'David Naranjo'
 #html_logo =
 # The full version, including alpha/beta/rc tags
-release = '1'
+version = '1.0'
+release = '1.0'
 
 
 # -- General configuration ---------------------------------------------------
