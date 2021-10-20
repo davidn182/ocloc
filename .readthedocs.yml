@@ -13,6 +13,6 @@ formats: []
 python:
   version: 3.8
   install:
-    - requirements: sphinx_bootstrap_theme
+    - requirements: requirements-dev.txt
     - method: pip
       path: .
