@@ -18,6 +18,7 @@ pydata_sphinx_theme
 sphinx_automodapi
 ipykernel
 sphinx_bootstrap_theme
+myst-parser
 
 # FOR TESTING
 asv
