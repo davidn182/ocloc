@@ -10,6 +10,16 @@ This project is under active development.
 ### Apache 2.0 License
 [![License](https://img.shields.io/badge/License-Apache%202.0-yellowgreen.svg)](https://opensource.org/licenses/Apache-2.0)  
 
+### Installation
+OCloC works in OS X & Linux systems. 
+
+
+
+
+### Side note for Windows systems:
+As some subroutines were written in Fortran it can also be run on Windows but it will be necessary to compile the codes in the directory ./ocloc/recover_timing_errors-master/ by using the makefile. Note that you will need to have SAC installed in your computer.
+
+
 
 ## Contributing
 
