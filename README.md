@@ -13,10 +13,10 @@ This project is under active development.
 
 ## Contributing
 
-1. Fork it on your own github (<https://github.com/srsudo/picoss/fork>)
-2. Create your feature branch (`git checkout -b feature/awesome_feature`)
-3. Commit your changes (`git commit -am 'Add some awesome feature'`)
-4. Push to the branch (`git push origin feature/awesome_feature`)
+1. Fork it on your own github (<https://github.com/davidn182/ocloc/fork>)
+2. Create your feature branch (`git checkout -b feature/new_feature`)
+3. Commit your changes (`git commit -am 'Add some new feature'`)
+4. Push to the branch (`git push origin feature/new_feature`)
 5. Create a new Pull Request
 
 ### Funding
