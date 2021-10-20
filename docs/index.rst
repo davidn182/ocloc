@@ -35,4 +35,3 @@ External links
 ^^^^^^^^^^^^^^
 
 * `GitHub <https://github.com/davidn182>`_
-* `Linkedin <https://www.linkedin.com/>`_
