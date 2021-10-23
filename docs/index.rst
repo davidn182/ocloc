@@ -9,12 +9,10 @@ Welcome to OCloC's documentation!
 .. toctree::
    about.md
    installation.md
-   tutorial.md
+   manual/index.md
    API.md
    :maxdepth: 2
    :caption: Contents:
-
-
 
 
 Indices and tables
@@ -35,4 +33,3 @@ External links
 ^^^^^^^^^^^^^^
 
 * `GitHub <https://github.com/davidn182>`_
-* `Linkedin <https://www.linkedin.com/>`_

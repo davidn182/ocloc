@@ -30,7 +30,42 @@ release = '1.0'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['myst_parser']
+
+
+# ==== 1. Extensions  ===
+# Load extensions
+extensions = [
+    # 'sphinx.ext.autodoc',
+    'numpydoc',
+    'sphinx_panels',
+    'sphinx.ext.intersphinx',
+    # 'sphinx.ext.autosummary',
+    'sphinx.ext.mathjax',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.todo',
+    # 'sphinx_gallery.gen_gallery',
+    'sphinx_automodapi.automodapi',
+    'matplotlib.sphinxext.plot_directive',
+    'IPython.sphinxext.ipython_console_highlighting',
+    'IPython.sphinxext.ipython_directive',
+    'myst_parser']
+    
+panels_add_bootstrap_css = False
+autosummary_generate = True
+add_module_names = True
+add_function_parentheses = False
+
+# Numpydoc settings
+numpydoc_show_class_members = False
+# numfig = True
+# numfig_format = {'figure': 'Figure %s:'}
+# Make numpydoc to generate plots for example sections
+numpydoc_use_plots = True
+
+
+
+
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

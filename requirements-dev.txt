@@ -18,7 +18,8 @@ pydata_sphinx_theme
 sphinx_automodapi
 ipykernel
 sphinx_bootstrap_theme
-
+numpydoc
+ 
 # FOR TESTING
 asv
 pytest
