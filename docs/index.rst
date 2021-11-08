@@ -6,13 +6,36 @@
 Welcome to OCloC's documentation!
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+OCloC is an open-source project dedicated to detect and correct timing errors when using passive seismic records. This Python Package is particularly relevant for projects that use Ocean-Bottom Seismographs because their lack of GPS connection can, and most certainly will, induce a timing error. Needless to say, interpretations of the subsurface might be wrong if the seismic stations contain timing errors. The aim of this project is to prevent this from hapening.
+
+The main goal of the OCloC project is to rapidly detect and correct clock errors of seismic networks. Please note that for doing so, this package requires an understanding of the basics of seismic interferometry. If you are not familiar with this method please take a look at the Introduction section.
+
+Requirements
+^^^^^^^^^^^^
+
+As mentioned in the introduction section
+
+Code is stored on github, the development branches are here, or the latest stable release can be found here.
+
+.. _my-reference-label:
+
+Section to cross-reference
+--------------------------
+This is the text of the section.
+
+
+
+
+
 .. toctree::
-   about.md
-   installation.md
-   manual/index.md
-   API.md
    :maxdepth: 2
    :caption: Contents:
+   
+   about.rst
+   installation.rst
+   tutorial/tutorial.rst
+   API.rst
+   rst_commands_david.rst
 
 
 Indices and tables

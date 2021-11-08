@@ -92,7 +92,7 @@ html_theme_options = {
 #'globaltoc_depth': 4,
 #'bootswatch_theme': "united",
 'bootstrap_version': "3",
-'navbar_site_name': "More",
+'navbar_site_name': "Site",
 
 #'source_link_position': "footer"
 #'navbar_fixed_top': "false"
