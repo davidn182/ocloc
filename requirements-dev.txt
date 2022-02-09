@@ -3,6 +3,10 @@
 
 # SOFT DEPENDENCIES
 matplotlib
+pandas
+obspy
+numpy
+seaborn
 
 # SETUP RELATED
 setuptools_scm
