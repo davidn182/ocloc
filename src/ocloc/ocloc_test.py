@@ -6,6 +6,7 @@ Created on Wed Mar 24 15:58:16 2021
 modified June 2, 2021
 @author: davidnaranjo
 """
+
 from contextlib import contextmanager
 import obspy
 from obspy.geodetics.base import gps2dist_azimuth
