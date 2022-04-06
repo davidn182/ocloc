@@ -5,6 +5,7 @@ Created on Wed Mar 24 15:58:16 2021
 modified June 2, 2021
 @author: davidnaranjo
 """
+import copy
 from contextlib import contextmanager
 import obspy
 from obspy.geodetics.base import gps2dist_azimuth
@@ -22,7 +23,6 @@ import subprocess
 import sys
 
 # Public functions.
-
 
 def read_xcorrelations(station1_code, station2_code, path2data_dir):
     """
@@ -171,12 +171,12 @@ def calculate_apriori_dt(cd, correlations, plot=False, **kwargs):
 
     Parameters
     ----------
-    cd: Clock_drift()
+    cd: ClockDrift()
         DESCRIPTION.
     correlations: list
       list of Correlations object. You can use the following function
       to retrieve all the correlations for a given station pair:
-      correlations = Clock_drift.get_correlations_of_stationpair(
+      correlations = ClockDrift.get_correlations_of_stationpair(
           station1_code,
           station2_code)
     if plot is set to tru provide a min_t and t_max to trim the correlation
@@ -286,12 +286,12 @@ def calculate_apriori_dt_corrected(cd, correlations, plot=False, **kwargs):
 
     Parameters
     ----------
-    cd: Clock_drift()
+    cd: ClockDrift()
         DESCRIPTION.
     correlations: list
       list of Correlations object. You can use the following function
       to retrieve all the correlations for a given station pair:
-      correlations = Clock_drift.get_correlations_of_stationpair(
+      correlations = ClockDrift.get_correlations_of_stationpair(
           station1_code,
           station2_code)
     if plot is set to tru provide a min_t and t_max to trim the correlation
@@ -678,7 +678,7 @@ def recount_correlations_removing_station(
 # Definitions of the classes ###############################################
 
 
-class Processing_parameters:
+class ProcessingParameters:
     """ """
 
     def __init__(
@@ -1000,7 +1000,7 @@ class Correlation(object):
         # TODO: Calculate signal to noise raito.
 
 
-class Clock_drift(object):
+class ClockDrift(object):
     """ """
 
     def __init__(
@@ -1032,12 +1032,51 @@ class Clock_drift(object):
         self.iteration = 0
 
     def __repr__(self):
-        info_string = "Clock_drift object\n"
+        info_string = "ClockDrift object\n"
         info_string += "There are " + str(len(self.stations)) + " stations"
-        info_string += " stored within the Clock_drift object. \n"
+        info_string += " stored within the ClockDrift object. \n"
         info_string += "There are " + str(len(self.correlations))
-        info_string += " correlations stored within the Clock_drift object.\n"
+        info_string += " correlations stored within the ClockDrift object.\n"
         return info_string
+
+    def copy(self):
+        """
+        Return a deepcopy of the ClockDrift object.
+
+        :rtype: :class:`~ClockDrift`
+        :return: Copy of current ClockDrift.
+
+        .. rubric:: Examples
+
+        1. Create a ClockDrift and copy it
+
+            >>> from ocloc import ClockDrift
+            >>> cd = Clock_drift(station_file, path2data_dir,
+                  reference_time = '2014-08-21T00:00:00.000000Z',
+                  list_of_processing_parameters=[params2])#, params3])
+            >>> cd2 = st.copy()
+
+           The two objects are not the same:
+
+            >>> st is st2
+            False
+
+           But they have equal data (before applying further processing):
+
+            >>> st == st2
+            True
+
+        2. The following example shows how to make an alias but not copy the
+           data. Any changes on ``st3`` would also change the contents of
+           ``st``.
+
+            >>> st3 = st
+            >>> st is st3
+            True
+            >>> st == st3
+            True
+        """
+        return copy.deepcopy(self)
 
     def set_processing_parameters(self, list_of_processing_parameters):
         if not isinstance(list_of_processing_parameters, list):
@@ -1045,10 +1084,10 @@ class Clock_drift(object):
             msg += " the different Processing Parameter objects."
             raise Exception(msg)
         for lst in list_of_processing_parameters:
-            str_type = "<class 'ocloc.Processing_parameters'>"
+            str_type = "<class 'ocloc.ProcessingParameters'>"
             if str(type(lst)) != str_type:
                 msg = "The objects inside the list should be of the type "
-                msg += "Processing_parameters"
+                msg += "ProcessingParameters"
                 raise Exception(msg)
         self.processing_parameters = list_of_processing_parameters
 
@@ -1687,7 +1726,7 @@ class Clock_drift(object):
 
         if method == "lstsq":
             print("Calculating a and b for each station.")
-            x = np.linalg.lstsq(A_dum, Tobs_dum, rcond=rcond)[0]
+            x, _, rank, _,  = np.linalg.lstsq(A_dum, Tobs_dum, rcond=rcond)
 
         elif method == "weighted_lstsq":
             print("Calculating a and b for each station.")
@@ -1709,7 +1748,7 @@ class Clock_drift(object):
                     station2.latitude,
                     station2.longitude,
                 )[0]
-                W.append(1 / cpl_dist)
+                W.append(cpl_dist)
             W = np.array(W)
 
             A_dum = self.matrix_A
@@ -1721,7 +1760,7 @@ class Clock_drift(object):
             W = np.sqrt(np.diag(W))
             Aw = np.dot(W, A_dum)
             Bw = np.dot(Tobs_dum, W)
-            x = np.linalg.lstsq(Aw, Bw, rcond=rcond)[0]
+            x, _, rank, _, = np.linalg.lstsq(Aw, Bw, rcond=rcond)
         else:
             msg = "You have to choose an inversion method that can be 'lstsq'"
             msg += "for least squares inversion or 'weighted_lstsq' for "
