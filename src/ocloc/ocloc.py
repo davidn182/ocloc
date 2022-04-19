@@ -1205,6 +1205,33 @@ class ClockDrift(object):
         self.stations = stations
         self.station_names = [sta.code for sta in stations]
 
+    def get_correlations_of_station(self, station_code):
+        """
+        Function to retrieve all correlations of a given staiton.
+
+        Parameters
+        ----------
+        station_code: str
+
+        returns
+        -------
+        correlations: list
+            List of cross correlations of the given station
+        """
+        if type(station_code) is not str:
+            raise TypeError("station_code must be str")
+
+        if not self.get_station(station_code):
+            raise NameError("station_code not found")
+
+        correlations = []
+        for correlation in self.correlations:
+            if correlation.station1_code == station_code:
+                correlations.append(correlation)
+            elif correlation.station2_code == station_code:
+                correlations.append(correlation)
+        return correlations
+
     def get_station(self, station_code):
         for station in self.stations:
             if station.code == station_code:
