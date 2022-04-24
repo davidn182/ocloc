@@ -117,3 +117,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Guus gitignore 24-04-2022
+/home/hoogewg/Documents/GitHub/ocloc/src/ocloc/recover_timing_errors-master
+
+
