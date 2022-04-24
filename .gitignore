@@ -119,7 +119,7 @@ dmypy.json
 .pyre/
 
 # Guus gitignore 24-04-2022
-src/ocloc/recover_timing_errors-master/**
+ocloc/src/ocloc/recover_timing_errors-master/**
 
 
 
