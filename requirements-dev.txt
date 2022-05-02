@@ -7,7 +7,6 @@ pandas
 obspy
 numpy
 seaborn
-#pandoc
 
 # SETUP RELATED
 setuptools_scm
@@ -26,6 +25,7 @@ sphinx_bootstrap_theme
 numpydoc
 myst-parser
 nbsphinx
+pandoc
 
 # FOR TESTING
 asv
