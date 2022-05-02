@@ -15,7 +15,6 @@ It is important to mention here that we do not provide the routines for computin
 .. toctree::
    :maxdepth: 2
 
-   0. Preface
    introduction.md
    getting_started.md
    data_requirements.md

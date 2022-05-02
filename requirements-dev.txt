@@ -7,7 +7,7 @@ pandas
 obspy
 numpy
 seaborn
-pandoc
+#pandoc
 
 # SETUP RELATED
 setuptools_scm
