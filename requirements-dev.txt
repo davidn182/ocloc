@@ -25,6 +25,7 @@ ipykernel
 sphinx_bootstrap_theme
 numpydoc
 myst-parser
+nbsphinx
 
 # FOR TESTING
 asv
