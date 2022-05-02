@@ -20,7 +20,6 @@ Contents
 .. toctree::
    :maxdepth: 2
    
-   about.rst
    installation.rst
    tutorial/tutorial.rst
    API.rst

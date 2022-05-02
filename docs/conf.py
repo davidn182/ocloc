@@ -48,7 +48,9 @@ extensions = [
     'matplotlib.sphinxext.plot_directive',
     'IPython.sphinxext.ipython_console_highlighting',
     'IPython.sphinxext.ipython_directive',
-    'myst_parser']
+    'myst_parser',
+    'nbsphinx'
+    ]
     
 panels_add_bootstrap_css = False
 autosummary_generate = True

@@ -1,3 +1,4 @@
-# API
+API
+^^^^^^^^^^^^
 
 Some text!
