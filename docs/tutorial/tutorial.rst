@@ -22,5 +22,4 @@ To illustrate the power of seismic interferometry
    introduction.md
    getting_started.md
    data_requirements.md
-
-kfk
+   

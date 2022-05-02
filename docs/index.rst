@@ -10,26 +10,15 @@ OCloC is an open-source project dedicated to detect and correct timing errors wh
 
 The main goal of the OCloC project is to rapidly detect and correct clock errors of seismic networks. Please note that for doing so, this package requires an understanding of the basics of seismic interferometry. If you are not familiar with this method please take a look at the Introduction section.
 
-Requirements
-^^^^^^^^^^^^
-
-As mentioned in the introduction section
-
-Code is stored on github, the development branches are here, or the latest stable release can be found here.
+Our code is stored in github, the development branches, or the latest stable release can be found here.
 
 .. _my-reference-label:
 
-Section to cross-reference
+Contents
 --------------------------
-This is the text of the section.
-
-
-
-
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
    
    about.rst
    installation.rst
