@@ -13,7 +13,7 @@ This project is under active development.
 ### Installation
 OCloC works in OS X & Linux systems. 
 
-
+Installation instructions are provided at https://ocloc.readthedocs.io/en/latest/index.html
 
 
 ### Side note for Windows systems:
