@@ -49,7 +49,8 @@ extensions = [
     'IPython.sphinxext.ipython_console_highlighting',
     'IPython.sphinxext.ipython_directive',
     'myst_parser',
-    'nbsphinx'
+    'nbsphinx',
+    'nbsphinx_link'
     ]
     
 panels_add_bootstrap_css = False

@@ -1,9 +1,0 @@
-Getting started
-###############
-
-
-
-
-Basic example
--------------
-
