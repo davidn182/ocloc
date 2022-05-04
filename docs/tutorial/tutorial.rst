@@ -17,5 +17,7 @@ Given that Github has a limited capacity to upload data, please request the data
 .. toctree::
    :maxdepth: 2
 
-   loading_data.nblink
-   
+   1loading_data.nblink
+   2checking_the_data_we_loaded.nblink
+   3calculate_apriori_dt.nblink
+   4calculate_t_app.nblink
