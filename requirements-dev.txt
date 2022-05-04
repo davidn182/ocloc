@@ -25,6 +25,7 @@ sphinx_bootstrap_theme
 numpydoc
 myst-parser
 nbsphinx
+nbsphinx_link
 pandoc
 
 # FOR TESTING
