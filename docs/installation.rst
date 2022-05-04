@@ -24,8 +24,9 @@ Now let's create a conda environment where we will install some dependecies.
 
    $ conda create -n ocloc obspy pandas seaborn
    $ conda activate ocloc  # activate the ocloc environment
-   (ocloc) $
+   (ocloc) $ cd /path-to-your-favorite-location-where-the-project-will-be-installed/
+   (ocloc) $ git clone https://github.com/davidn182/ocloc.git
 
-Then clone the repository in your favorite location. Now you can run the jupyter notebooks in your own laptop.
+Now you can run the jupyter notebooks located at ``/ocloc/tutorials/`` in your own laptop.
 
 In the future we will be adding the package to Anaconda.
