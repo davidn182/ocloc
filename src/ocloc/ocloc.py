@@ -160,123 +160,7 @@ def trim_correlation_trace(tr, min_t, max_t, freqmin=0.15, freqmax=0.3):
     data = tr2.data[low_index:high_index]
     return times2, data
 
-
 def calculate_apriori_dt(cd, correlations, plot=False, **kwargs):
-    """
-    Calculates de apriori estimate of given several correlation files of the
-    same station pair, given that the correlation was perform in the same
-    order for all the files (meaning station 1 is the same and station 2 is
-    the same)
-
-    Parameters
-    ----------
-    cd: ClockDrift()
-        DESCRIPTION.
-    correlations: list
-      list of Correlations object. You can use the following function
-      to retrieve all the correlations for a given station pair:
-      correlations = ClockDrift.get_correlations_of_stationpair(
-          station1_code,
-          station2_code)
-    if plot is set to tru provide a min_t and t_max to trim the correlation
-    in the times you want to check
-
-    Returns
-    -------
-    None.
-
-    """
-    # Check that all correlations have the same processing params.
-    freqmins = [c.processing_parameters.freqmin for c in correlations]
-    freqmaxs = [c.processing_parameters.freqmax for c in correlations]
-    freqmin = list(set(freqmins))
-    freqmax = list(set(freqmaxs))
-    if len(freqmin) != 1 or len(freqmax) != 1:
-        raise Exception(
-            "The processing parameters are different for each" + "correlation"
-        )
-    freqmin = freqmin[0]
-    freqmax = freqmax[0]
-    if len(correlations) < 2:
-        msg = "There should be at least two correlations to use this method"
-        raise Exception(msg)
-
-    sta1 = list(
-        set([correlation.station1_code for correlation in correlations])
-    )
-    sta2 = list(
-        set([correlation.station2_code for correlation in correlations])
-    )
-    if len(sta1) != 1 or len(sta2) != 1:
-        msg = "The first and second station in the correlations are not the "
-        msg += "same for all the correlations."
-        raise Exception(msg)
-
-    avg_dates = [correlation.average_date for correlation in correlations]
-
-    # Read the correlation of the earliest date
-    earliest_date = min(avg_dates)
-    earliest_index = avg_dates.index(earliest_date)
-    earliest_path2file = correlations[earliest_index].file_path
-    earliest_tr = read_correlation_file(path2file=earliest_path2file)
-    earliest_tr = earliest_tr.filter(
-        "bandpass", freqmin=freqmin, freqmax=freqmax, corners=4, zerophase=True
-    )
-
-    # Read the correlation with the latest date.
-    latest_date = max(avg_dates)
-    latest_index = avg_dates.index(latest_date)
-    latest_path2file = correlations[latest_index].file_path
-    latest_tr = read_correlation_file(path2file=latest_path2file)
-    latest_tr = latest_tr.filter(
-        "bandpass", freqmin=freqmin, freqmax=freqmax, corners=4, zerophase=True
-    )
-
-    cc = correlate(earliest_tr.data, latest_tr.data, 1000)
-    shift, value = xcorr_max(cc, abs_max=False)
-    time_shift = shift / earliest_tr.stats.sampling_rate
-
-    delta_t = latest_date - earliest_date
-    shift_rate = time_shift / delta_t
-
-    for correlation in correlations:
-        t = correlation.average_date
-        dt = (t - earliest_date) * shift_rate
-        if cd.get_station(correlation.station1_code).needs_correction:
-            correlation.apriori_dt1 = dt
-            correlation.apriori_dt2 = 0
-        elif cd.get_station(correlation.station2_code).needs_correction:
-            correlation.apriori_dt1 = 0
-            correlation.apriori_dt2 = dt
-        else:
-            raise
-
-    if plot:
-        min_t = kwargs["min_t"]
-        max_t = kwargs["max_t"]
-        t1, data1 = trim_correlation_trace(
-            earliest_tr, min_t, max_t, freqmin, freqmax
-        )
-        t2, data2 = trim_correlation_trace(
-            latest_tr, min_t, max_t, freqmin, freqmax
-        )
-        f, (ax1, ax2) = plt.subplots(2, 1, sharey=True, figsize=(8, 6))
-        ax1.set_title("Before correction " + earliest_tr.stats.station_pair)
-        ax2.set_title("After correction " + earliest_tr.stats.station_pair)
-        ax1.plot(t1, data1, label=earliest_tr.stats.average_date)
-        ax1.plot(t2, data2, label=latest_tr.stats.average_date)
-        ax2.plot(t1, data1, label=earliest_tr.stats.average_date)
-        ax2.plot(t2 + time_shift, data2, label=latest_tr.stats.average_date)
-        ax2.set_xlabel("Time [s]")
-        ax2.set_ylabel("Amplitudes")
-        ax1.set_ylabel("Amplitudes")
-        plt.tight_layout()
-        ax1.legend(loc="best")
-        ax2.legend(loc="best")
-        plt.show()
-
-
-def calculate_apriori_dt_corrected(cd, correlations, plot=False, **kwargs):
     """
     Calculates de apriori estimate of given several correlation files of the
     same station pair, given that the correlation was perform in the same
@@ -372,36 +256,6 @@ def calculate_apriori_dt_corrected(cd, correlations, plot=False, **kwargs):
             correlation.apriori_dt2 = -dt
         else:
             raise
-
-
-def plot_stream(st, freqmin=0.15, freqmax=0.3, min_t=-40, max_t=30):
-    """
-    Function to generate plot of the cross-correlations before and after
-    applying the correction using the apriori estimate function.
-
-    Parameters
-    ----------
-    station1_code: TYPE
-        DESCRIPTION.
-    station2_code: TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    None.
-
-    """
-    f, ax1 = plt.subplots(1, 1, sharey=True, dpi=300)
-    for tr in st:
-        t1, data = trim_correlation_trace(tr, min_t, max_t, freqmin, freqmax)
-        ax1.plot(t1, data, label=str(tr.stats.average_date)[:10])
-
-    ax1.set_title(tr.stats.station_pair)
-    ax1.set_ylabel("Amplitudes")
-    ax1.legend(loc=2)
-    plt.tight_layout()
-    plt.show()
-
 
 def correlations_of_station_exist(station_code, path2data_dir):
     """
@@ -842,16 +696,10 @@ class Correlation(object):
             + str(self.average_date)
             + "\n Number of days: "
             + str(self.number_days)
+            + "\n Interstation distance in km: "
+            + str(self.cpl_dist/1000)
             + "\n Path: "
             + self.file_path
-            + "\n apriori_dt1: "
-            + str(self.apriori_dt1)
-            + "\n apriori_dt2: "
-            + str(self.apriori_dt2)
-            + "\n dt_ins_station1: "
-            + str(self.dt_ins_station1)
-            + "\n dt_ins_station2: "
-            + str(self.dt_ins_station2)
             + "\n t_app: "
             + str(self.t_app)
             + "\n"
@@ -1313,50 +1161,6 @@ class ClockDrift(object):
         Returns
         -------
         None.
-        """
-        # for correlation in self.correlations:
-        #     correlation.apriori_dt1 = 0
-        #     correlation.apriori_dt2 = 0
-        print("Calculating the apriori estimates for each stationpair")
-        for i, station1 in enumerate(self.stations):
-            for station2 in self.stations[i + 1:]:  # Avoids repeating statns
-                sta1 = station1
-                sta2 = station2
-                correlations = self.get_correlations_of_stationpair(
-                    sta1.code, sta2.code
-                )
-                if len(correlations) == 0:
-                    continue
-                for params in self.processing_parameters:
-                    correlations_params = correlations_with_parameters(
-                        correlations, params
-                    )
-                    # If there are no corelations for station pair... skip
-                    if len(correlations_params) == 0:
-                        continue
-
-                    # If there is only one corelation assume the first
-                    # estimate as 0 time shift.
-                    if len(correlations_params) == 1:
-                        correlations_params[0].apriori_dt1 = 0
-                        correlations_params[0].apriori_dt2 = 0
-                        continue
-                    # Else calculate the apriori estimate.
-                    calculate_apriori_dt(self, correlations_params)
-
-    def calculate_aprioridt_4_allcorrelations_corrected(self):
-        """
-        Function that calculates the apriori dt for all correlation files.
-        Given the all the stations contained in the clock drift object, the
-        function calculates all the possible station-pair combinations
-        and then calculates the apriori estimate for each of the correlations.
-
-        When using different processing parameters, we check if the apriori
-        estimate is the same, if it is not then one of the two is wrong
-        so we will use the value of 0 as an apriori estimate.
-        Returns
-        -------
-        None.
 
         """
         print("Calculating the apriori estimates for each stationpair")
@@ -1384,7 +1188,7 @@ class ClockDrift(object):
                         correlations_params[0].apriori_dt2 = 0
                         continue
                     # Else calculate the apriori estimate.
-                    calculate_apriori_dt_corrected(self, correlations_params)
+                    calculate_apriori_dt(self, correlations_params)
 
     def calculate_dt_ins(self):
         """
@@ -1500,6 +1304,7 @@ class ClockDrift(object):
             self.no_corr_per_avg_date(
                 station, days_apart=days_apart, plot=False
             )
+        self.iteration += 1
 
     def stations_with_few_corrs(
         self,
@@ -1920,8 +1725,8 @@ class ClockDrift(object):
 
     def no_corr_per_avg_date(self, station, days_apart=60, plot=True):
         """
-        Function to calculated how many shifts could be observed of the
-        different cross-correlations of a given station.
+        Function to calculated how many t_apps could be observed of the
+        different cross-correlations for a given station.
 
         Parameters
         ----------
