@@ -22,3 +22,4 @@ Given that Github has a limited capacity to upload data, please request the data
    3calculate_apriori_dt.nblink
    4calculate_t_app.nblink
    5selecting_correlations.nblink
+   6thursdaytalk.nblink
