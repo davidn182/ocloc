@@ -23,6 +23,7 @@ import sys
 
 # Public functions.
 
+
 def read_xcorrelations(station1_code, station2_code, path2data_dir):
     """
     Function to load all the available cross-correlation for a given station
@@ -160,6 +161,7 @@ def trim_correlation_trace(tr, min_t, max_t, freqmin=0.15, freqmax=0.3):
     data = tr2.data[low_index:high_index]
     return times2, data
 
+
 def calculate_apriori_dt(cd, correlations, plot=False, **kwargs):
     """
     Calculates de apriori estimate of given several correlation files of the
@@ -256,6 +258,7 @@ def calculate_apriori_dt(cd, correlations, plot=False, **kwargs):
             correlation.apriori_dt2 = -dt
         else:
             raise
+
 
 def correlations_of_station_exist(station_code, path2data_dir):
     """
@@ -697,7 +700,7 @@ class Correlation(object):
             + "\n Number of days: "
             + str(self.number_days)
             + "\n Interstation distance in km: "
-            + str(self.cpl_dist/1000)
+            + str(self.cpl_dist / 1000)
             + "\n Path: "
             + self.file_path
             + "\n t_app: "
@@ -1306,6 +1309,120 @@ class ClockDrift(object):
             )
         self.iteration += 1
 
+    def filter_stations(self, min_number_of_total_correlations,
+                        min_number_correlation_periods, 
+                        min_number_of_stationconnections,
+                        days_apart):
+        """
+        TODO: Describe 
+
+        Parameters
+        ----------
+        min_number_of_total_correlations : TYPE
+            DESCRIPTION.
+        min_number_correlation_periods : TYPE
+            DESCRIPTION.
+        min_number_of_stationconnections : TYPE
+            DESCRIPTION.
+        days_apart : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        # Index of the station in self.stations
+        i = 0
+
+        # Last index to end loop
+        n = len(self.stations)
+
+        # List of stations that will not be included in the inversion.
+        stations_excluded_from_inversion = []
+
+        while i < n:
+            # Select the station with index i
+            station = self.stations[i]
+
+            if not station.needs_correction:
+                i += 1
+                continue
+            cond1_met, cond2_met, cond3_met = False, False, False
+            # If the station has already been added to 
+            # the list of stations that are excluded
+            # from the inversion then continue.
+            if station in stations_excluded_from_inversion:
+                i += 1
+                continue
+
+            # Recalculate the number of correlations per average date
+            # for the station being iterated. We do this to recalculate
+            # the number of correlations if some of them were removed
+            # as part of other station.
+            self.no_corr_per_avg_date(station=station, days_apart=days_apart,
+                                      plot=False)
+
+            correlations_of_station = self.get_correlations_of_station(station.code)
+
+            # Condition 1:
+            # Minimum number of correlations a station should have with a 
+            # calculated t_app+ - t_app-
+            no_correlations_with_t_app = 0
+            for c in correlations_of_station:
+                if not np.isnan(c.t_app[-1]):
+                    no_correlations_with_t_app += 1
+
+            if no_correlations_with_t_app >= min_number_of_total_correlations:
+                cond1_met = True
+            else:
+                stations_excluded_from_inversion.append(station)
+                # If condition is not met then restart the loop
+                # and make all the values np.nan to exclude the station
+                # from the inversion.
+                for c in correlations_of_station:
+                    c.t_app[-1] = np.nan
+                i = 0  # This assignment restarts the loop
+                print("Station ", station.code, 
+                      "does not exceed the min. no. of correlation.")
+
+            # Condition 2:
+            # If the number of correlation periods is less than the 
+            # minimum number of correlations then exclude from the inversion.
+            if len(station.no_corr_per_avg_date) >= min_number_correlation_periods:
+                cond2_met = True
+            else:
+                stations_excluded_from_inversion.append(station)
+                for c in correlations_of_station:
+                    c.t_app[-1] = np.nan
+                i = 0  # This assignment restarts the loop
+                print("Station ", station.code, 
+                      "does not exceed the min. no. of correlation periods.")
+
+            # Condition 3:
+            # Minimum number of station-connections need for a station
+            # to be included in the inversion.
+            connections_dictionary = {}
+
+            for c in correlations_of_station:
+                if not np.isnan(c.t_app[-1]):
+                    if station.code == c.station1_code:
+                        connections_dictionary[c.station2_code] = 1
+                    else:
+                        connections_dictionary[c.station1_code] = 1
+            if len(connections_dictionary) >= min_number_of_stationconnections:
+                cond3_met = True
+            else:
+                stations_excluded_from_inversion.append(station)
+                for c in self.get_correlations_of_station(station.code):
+                    c.t_app[-1] = np.nan
+
+                i = 0  # This assignment restarts the loop
+                print("Station ", station.code, 
+                      "does not exceed the min_number_of_stationconnections")
+            if cond1_met and cond2_met and cond3_met:
+                i += 1
+
     def stations_with_few_corrs(
         self,
         min_no_corr_periods,
@@ -1557,7 +1674,7 @@ class ClockDrift(object):
 
         if method == "lstsq":
             print("Calculating a and b for each station.")
-            x, _, rank, _,  = np.linalg.lstsq(A_dum, Tobs_dum, rcond=rcond)
+            x, _, rank, _, = np.linalg.lstsq(A_dum, Tobs_dum, rcond=rcond)
 
         elif method == "weighted_lstsq":
             print("Calculating a and b for each station.")
@@ -1730,7 +1847,7 @@ class ClockDrift(object):
 
         Parameters
         ----------
-        station_code: TYPE
+        station: ocloc.Station
             DESCRIPTION.
         days_apart: int
             How many days apart should the function consider to be the same
@@ -1741,7 +1858,7 @@ class ClockDrift(object):
         Returns
         -------
         Adds attribute to the stations that keeps track of how many stations
-        have observed time shifts.
+        have observed t_app.
         The results are saved in station.no_corr_per_avg_date
 
         """
@@ -1779,49 +1896,100 @@ class ClockDrift(object):
             avg_dates_witout_t_app = sorted(
                 dates_of_correlations_without_t_app(self, station.code)
             )
-
-            dates_witout_t_app = {avg_dates_witout_t_app[0]: 1}
-            for date in avg_dates_witout_t_app[1:]:
-                new_key = True
-                # Check if date already in dictionary and if so then add to
-                # its count.
-                if dates_witout_t_app.get(date) is not None:
-                    dates_witout_t_app[date] += 1
-                    new_key = False
-                    continue
-                # Check if the difference between the dates and the date we
-                # are checking is smaller than the days_apart argument given
-                # as an input.
-                for date_counted in dates_witout_t_app.keys():
-                    diff_date = abs(obs_t(date_counted) - obs_t(date))
-                    if diff_date < days_apart * 86400:
-                        dates_witout_t_app[date_counted] += 1
+            if len(avg_dates_witout_t_app)>0:
+                dates_witout_t_app = {avg_dates_witout_t_app[0]: 1}
+                
+                for date in avg_dates_witout_t_app[1:]:
+                    new_key = True
+                    # Check if date already in dictionary and if so then add to
+                    # its count.
+                    if dates_witout_t_app.get(date) is not None:
+                        dates_witout_t_app[date] += 1
                         new_key = False
-                        break
-                if new_key:
-                    dates_witout_t_app[date] = 1
-
-            w = 0.15
-            X = np.arange(len(dates_witout_t_app.keys()))
-            plt.figure(dpi=300)
-            plt.bar(
-                X - w,
-                dates_unique.values(),
-                label="Dates with t_app",
-                width=0.25,
-            )
-            plt.bar(
-                X + w,
-                dates_witout_t_app.values(),
-                label="Dates without t_app",
-                width=0.25,
-            )
-            plt.xticks(X, list(dates_witout_t_app.keys()))
-            plt.title(station.code)
-            plt.xlabel("Average date")
-            plt.ylabel("Number of cross-correlations")
-            plt.legend()
-            plt.show()
+                        continue
+                    # Check if the difference between the dates and the date we
+                    # are checking is smaller than the days_apart argument given
+                    # as an input.
+                    for date_counted in dates_witout_t_app.keys():
+                        diff_date = abs(obs_t(date_counted) - obs_t(date))
+                        if diff_date < days_apart * 86400:
+                            dates_witout_t_app[date_counted] += 1
+                            new_key = False
+                            break
+                    if new_key:
+                        dates_witout_t_app[date] = 1
+                if len(dates_witout_t_app) == len(dates_unique):
+                    w = 0.15
+                    X = np.arange(len(dates_witout_t_app.keys()))
+                    plt.figure(dpi=300)
+                    plt.bar(
+                        X - w,
+                        dates_unique.values(),
+                        label="Dates with t_app",
+                        width=0.25,
+                    )
+                    plt.bar(
+                        X + w,
+                        dates_witout_t_app.values(),
+                        label="Dates without t_app",
+                        width=0.25,
+                    )
+                    plt.xticks(X, list(dates_witout_t_app.keys()))
+                    plt.title(station.code)
+                    plt.xlabel("Average date +/- " + str(days_apart) + " days")
+                    plt.ylabel("Number of cross-correlations")
+                    plt.legend()
+                    plt.show()
+                else:
+                    w = 0.
+                    X = np.arange(len(dates_unique.keys()))
+                    f, axs = plt.subplots(2, 1, sharey=True, dpi=300)
+                    axs[0].bar(
+                        X - w,
+                        dates_unique.values(),
+                        label="Dates with t_app",
+                        width=0.25,
+                    )
+                    axs[0].set_xticks(X, list(dates_unique.keys()))
+                    X = np.arange(len(dates_witout_t_app.keys()))
+                    axs[1].bar(
+                        X + w,
+                        dates_witout_t_app.values(),
+                        label="Dates without t_app",
+                        width=0.25,
+                    )
+                    axs[1].set_xticks(X, list(dates_witout_t_app.keys()))
+                    axs[0].set_title(station.code)
+                    for ax in axs:
+                        ax.set_xlabel("Average date +/- " + str(days_apart) + " days")
+                        ax.set_ylabel("# of crosscorrelations")
+                        ax.legend()
+                    plt.show()
+            else:
+                w = 0.
+                X = np.arange(len(dates_unique.keys()))
+                f, axs = plt.subplots(2, 1, sharey=True, dpi=300)
+                axs[0].bar(
+                    X - w,
+                    dates_unique.values(),
+                    label="Dates with t_app",
+                    width=0.25,
+                )
+                axs[0].set_xticks(X, list(dates_unique.keys()))
+                X = np.arange(len(dates_witout_t_app.keys()))
+                axs[1].bar(
+                    X + w,
+                    dates_witout_t_app.values(),
+                    label="Dates without t_app",
+                    width=0.25,
+                )
+                axs[1].set_xticks(X, list(dates_witout_t_app.keys()))
+                axs[0].set_title(station.code)
+                for ax in axs:
+                    ax.set_xlabel("Average date +/- " + str(days_apart) + " days")
+                    ax.set_ylabel("# of crosscorrelations")
+                    ax.legend()
+                plt.show()
 
     def plot_correlations_of_stationpair(
         self, station1_code, station2_code, iteration=-1, min_t=-50, max_t=30
@@ -2249,7 +2417,6 @@ class ClockDrift(object):
                 iterations,
                 a_values,
                 color="red",
-                edgecolor="k",
                 zorder=99,
                 alpha=0.5,
                 marker="+",
@@ -2259,7 +2426,6 @@ class ClockDrift(object):
                 iterations,
                 b_values,
                 color="blue",
-                edgecolor="k",
                 zorder=99,
                 alpha=0.5,
                 marker="+",
