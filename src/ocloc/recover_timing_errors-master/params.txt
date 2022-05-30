@@ -1,17 +1,17 @@
 # data_dir, station_1, station_2, results_dir_name, nsamples, freqmin, freqmax, cpl_dist, ref_vel, dist_trh, snr_trh, noise_st, apr_dt_st1, apr_dt_st2, dt_err, resp_details 
-/Users/localadmin/Dropbox/GitHub/data/HOP_O20_1413547737_100.sac
-HOP
-O20
-HOP_O20_1413547737_100.sac
+/Users/localadmin/Dropbox/GitHub/data/O22_SUH_1430751119_097.sac
+O22
+SUH
+O22_SUH_1430751119_097.sac
 90000
 0.2
 0.4
-48690.0835841953
+64114.61766222594
 4500.0
 2.5
 30.0
 240
-0.0
+-0.24
 0.0
 0.004
-True
+False
