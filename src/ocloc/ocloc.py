@@ -740,7 +740,8 @@ class Correlation(object):
         snr_trh = self.processing_parameters.snr_trh
         noise_st = self.processing_parameters.noise_st
         dt_err = self.processing_parameters.dt_err
-
+        
+        cwd = os.getcwd()
         # Set variables for locating the fortran codes and the parameter file.
         current_path = os.path.abspath(__file__)
         clock_errors_py_dir = Path(current_path).parents[0]
@@ -848,7 +849,7 @@ class Correlation(object):
             self.t_app.append(shift)
         self.station_separation = cpl_dist
         # TODO: Calculate signal to noise raito.
-
+        os.chdir(cwd)
 
 class ClockDrift(object):
     """ """
@@ -1307,14 +1308,16 @@ class ClockDrift(object):
             self.no_corr_per_avg_date(
                 station, days_apart=days_apart, plot=False
             )
-        self.iteration += 1
+        # self.iteration += 1
 
     def filter_stations(self, min_number_of_total_correlations,
                         min_number_correlation_periods, 
                         min_number_of_stationconnections,
                         days_apart):
         """
-        TODO: Describe 
+        Function to filter out stations that do not have enough
+        total number of cross-correlations, correlation periods, or
+        connections with other stations.
 
         Parameters
         ----------
@@ -1325,7 +1328,8 @@ class ClockDrift(object):
         min_number_of_stationconnections : TYPE
             DESCRIPTION.
         days_apart : TYPE
-            DESCRIPTION.
+            Minimum time separation between the first cross-correlation
+            and the last cross-correlation of a given station (in days).
 
         Returns
         -------
@@ -1550,7 +1554,7 @@ class ClockDrift(object):
 
                 # If it is the first inversion then we cant compute the
                 # estimated shift
-                if len(correlation.t_app) == 1:
+                if self.iteration == 0:
                     estimated_shift = np.nan
                 else:
                     estimated_shift = self.calculate_estimated_shift(
@@ -2437,7 +2441,6 @@ class ClockDrift(object):
         ax2.set_title("Fluctuation of b values")
         plt.xlabel("Iteration")
         plt.ylabel("a value")
-        plt.legend()
         plt.tight_layout()
         plt.show()
 
