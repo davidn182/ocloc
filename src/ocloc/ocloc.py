@@ -824,7 +824,7 @@ class Correlation(object):
                 self.snr_c = snr_c
             elif "SNR acausal wave" in a:
                 snr_a = float(a.replace("SNR acausal wave", ""))
-                self.snr_c = snr_a
+                self.snr_a = snr_a
             elif "acausal signal until index:" in a:
                 acausal_from_index = a.split(":")[1]
                 self.acausal_from_index = acausal_from_index
@@ -850,6 +850,108 @@ class Correlation(object):
         self.station_separation = cpl_dist
         # TODO: Calculate signal to noise raito.
         os.chdir(cwd)
+
+    def plot(self, min_t=-50, max_t=50):
+        """
+        Parameters
+        ----------
+        min_t: TYPE, optional
+            DESCRIPTION. The default is -50.
+        max_t: TYPE, optional
+            DESCRIPTION. The default is 30.
+
+        Returns
+        -------
+        None.
+        """
+
+        freqmin = self.processing_parameters.freqmin
+        freqmax = self.processing_parameters.freqmax
+        tr = read_correlation_file(self.file_path)
+        t1, data = trim_correlation_trace(tr, min_t, max_t, freqmin, freqmax)
+
+        # Begin figure
+        f, ax1 = plt.subplots(1, 1, sharey=True, dpi=300)
+        ax1.plot(
+            t1, data, label=str(tr.stats.average_date)[:10], alpha=0.7
+        )
+
+        ax1.set_title(
+            "Correlations of station pair: " + tr.stats.station_pair
+        )
+        ax1.set_xlabel("Time [s]")
+        ax1.set_ylabel("Amplitudes")
+        ax1.legend(loc=2)
+        plt.tight_layout()
+        plt.show()
+    
+
+    def plot_causal_n_acausal(self, min_t=-50, max_t=50):
+        """
+        Parameters
+        ----------
+        min_t: TYPE, optional
+            DESCRIPTION. The default is -50.
+        max_t: TYPE, optional
+            DESCRIPTION. The default is 30.
+
+        Returns
+        -------
+        None.
+        """
+        if np.isnan(self.t_app[-1]):
+            msg = "The station doesn't have t_app. Check if you computed"
+            msg += " the t_app already. Otherwise the station doesn't meet"
+            msg += " the minimum signal-to-noise ratio or min separation."
+            return (msg)
+        freqmin = self.processing_parameters.freqmin
+        freqmax = self.processing_parameters.freqmax
+        tr = read_correlation_file(self.file_path)
+
+        # Index of start and end of acausal signal
+        ac_i0 = int(self.acausal_from_index)
+        ac_if = int(self.acausal_until_index)
+
+        # Index of start and end of causal signal
+        c_i0, cif = int(self.causal_from_index), int(self.causal_until_index)
+
+        tr = tr.filter(
+            "bandpass",
+            freqmin=self.processing_parameters.freqmin,
+            freqmax=self.processing_parameters.freqmax,
+            corners=4,
+            zerophase=True)
+
+        # Define the t=0 as the middle of the cross-correlation.
+        start = -tr.times()[-1] / 2.0
+        end = tr.times()[-1] / 2.0
+
+        # Define our time vector.
+        t = np.linspace(start, end, tr.stats.npts)
+        # Define our amplitudes-vector
+        data = tr.data
+        
+        predicted = 2 * (self.dt_ins_station1[-1] - self.dt_ins_station2[-1])
+        # Make figure.
+        plt.figure(dpi=300)
+        title = "_".join([self.station1_code, self.station2_code])
+        title = "\n".join([title, "observed shift: " + str(self.t_app[-1])])
+        title = "\n".join([title, "predicted shift: " + str(predicted)])
+        plt.title(title)
+        plt.plot(t, data, label=str(tr.stats.average_date)[:10])
+        plt.plot(t[ac_i0:ac_if], data[ac_i0:ac_if], color="C3")
+        plt.plot(
+            t[c_i0:cif],
+            data[c_i0:cif],
+            label="Estimated causal and acausal wave",
+            color="C3")
+
+        plt.xlim(-50, 50)
+        plt.ylabel("Amplitudes")
+        plt.tight_layout()
+        plt.legend(loc="best")
+        plt.show()
+
 
 class ClockDrift(object):
     """ """
@@ -1186,10 +1288,10 @@ class ClockDrift(object):
                         continue
 
                     # If there is only one corelation assume the first
-                    # estimate as 0 time shift.
+                    # estimate as nan time shift.
                     if len(correlations_params) == 1:
-                        correlations_params[0].apriori_dt1 = 0
-                        correlations_params[0].apriori_dt2 = 0
+                        correlations_params[0].apriori_dt1 = np.nan
+                        correlations_params[0].apriori_dt2 = np.nan
                         continue
                     # Else calculate the apriori estimate.
                     calculate_apriori_dt(self, correlations_params)
@@ -1310,10 +1412,11 @@ class ClockDrift(object):
             )
         # self.iteration += 1
 
-    def filter_stations(self, min_number_of_total_correlations,
-                        min_number_correlation_periods, 
-                        min_number_of_stationconnections,
-                        days_apart):
+    def filter_stations(self,
+                        min_number_of_total_correlations=3,
+                        min_number_correlation_periods=2, 
+                        min_number_of_stationconnections=2,
+                        days_apart=30, return_boolean=False):
         """
         Function to filter out stations that do not have enough
         total number of cross-correlations, correlation periods, or
@@ -1389,7 +1492,8 @@ class ClockDrift(object):
                 i = 0  # This assignment restarts the loop
                 print("Station ", station.code, 
                       "does not exceed the min. no. of correlation.")
-
+                if return_boolean:
+                    return True
             # Condition 2:
             # If the number of correlation periods is less than the 
             # minimum number of correlations then exclude from the inversion.
@@ -1402,7 +1506,8 @@ class ClockDrift(object):
                 i = 0  # This assignment restarts the loop
                 print("Station ", station.code, 
                       "does not exceed the min. no. of correlation periods.")
-
+                if return_boolean:
+                    return True
             # Condition 3:
             # Minimum number of station-connections need for a station
             # to be included in the inversion.
@@ -1424,6 +1529,8 @@ class ClockDrift(object):
                 i = 0  # This assignment restarts the loop
                 print("Station ", station.code, 
                       "does not exceed the min_number_of_stationconnections")
+                if return_boolean:
+                    return True
             if cond1_met and cond2_met and cond3_met:
                 i += 1
 
@@ -2596,53 +2703,48 @@ class ClockDrift(object):
 
     def plot_connections_of_station(self, station_code):
         """
-
-        Parameters
-        ----------
-        cd: TYPE
-            DESCRIPTION.
-
-        Returns
-        -------
-        None.
-
+        It plots a map of all the connections of the station with the 
+        given code.
         """
         fig, ax = plt.subplots(1, 1, dpi=300)
-        no_station_connections = []
-
         station = self.get_station(station_code)
         station_code = station.code
         station_count = 0
-        for correlation in self.correlations:
-            if not station.included_in_inversion:
+        station1 = self.get_station(station_code)
+        for station2 in self.stations:
+            if station2.code == station_code:
                 continue
-            # If the station is not in the correlation then continue to next
-            # correlation.
-            if correlation.station1_code != station_code:
-                if correlation.station2_code != station_code:
+
+            correlations = self.get_correlations_of_stationpair(station_code,
+                                                                station2.code)
+            for correlation in correlations:
+
+                if isinstance(correlation.t_app[-1], str):
                     continue
-            if isinstance(correlation.t_app[-1], str):
-                continue
-            if np.isnan(correlation.t_app[-1]):
-                continue
-            station_count += 1
-            sta1_temp = self.get_station(correlation.station1_code)
-            sta2_temp = self.get_station(correlation.station2_code)
-            ax.plot(
-                [sta1_temp.longitude, sta2_temp.longitude],
-                [sta1_temp.latitude, sta2_temp.latitude],
-                color="k",
-                alpha=0.1,
-                linewidth=0.4,
-            )
-        no_station_connections.append(station_count)
+                if np.isnan(correlation.t_app[-1]):
+                    continue
+                station_count += 1
+
+                ax.plot(
+                    [station1.longitude, station2.longitude],
+                    [station1.latitude, station2.latitude],
+                    color="k",
+                    alpha=0.1,
+                    linewidth=0.4)
+
+                ax.annotate(
+                    station2.code,
+                    [station2.longitude, station2.latitude],
+                    zorder=9999,
+                    alpha=0.8,
+                    path_effects=[pe.withStroke(linewidth=4,
+                                                foreground="white")])
         ax.annotate(
             station_code + "\n" + str(station_count),
             [station.longitude, station.latitude],
             zorder=9999,
             alpha=0.8,
-            path_effects=[pe.withStroke(linewidth=4, foreground="white")],
-        )
+            path_effects=[pe.withStroke(linewidth=4, foreground="white")])
         lats = [sta.latitude for sta in self.stations]
         lons = [sta.longitude for sta in self.stations]
         colors = []
@@ -3256,3 +3358,136 @@ class ClockDrift(object):
             + " - ($2\\delta t^{ins}_i - 2\\delta t^{ins}_j$)|"
         )
         fig.set_xticklabels(fig.get_xmajorticklabels(), fontsize=5)
+
+    def plot_allcorrelations_of_station(self, station_code, min_t=-50,
+                                        max_t=50):
+        """
+        Parameters
+        ----------
+        station_code : TYPE
+            DESCRIPTION.
+        min_t : TYPE, optional
+            DESCRIPTION. The default is -50.
+        max_t : TYPE, optional
+            DESCRIPTION. The default is 50.
+
+        Returns
+        -------
+        None.
+
+        """
+        correlation_list = self.get_correlations_of_station(station_code)
+
+        # We retrieve all the station distances.
+        km = 1000
+        cpl_distances = [c.cpl_dist / km for c in correlation_list]
+        f, ax1 = plt.subplots(1, 1, figsize=(6, 15), sharey=True, dpi=300)
+
+        # station_pairs = []
+        for c in correlation_list:
+            # station_pair = c.station1_code + c.station2_code
+            # if station_pair in station_pairs:
+            #     continue
+            # station_pairs.append(station_pair)
+            freqmin = c.processing_parameters.freqmin
+            freqmax = c.processing_parameters.freqmax
+            cpl_dist = c.cpl_dist
+            tr = read_correlation_file(c.file_path)
+            tr = tr.normalize()
+            t1, data = trim_correlation_trace(tr, min_t, max_t, freqmin, 
+                                              freqmax)
+            ax1.plot(t1, data * 3 + cpl_dist / km, 
+                     alpha=0.7, color="k", linewidth=.5)
+            c = 0
+            for vel in [2, 2.5, 3, 3.5, 4]:
+                ax1.plot([0, max(cpl_distances) / vel], [0, max(cpl_distances)], 
+                         color="C" + str(c), linewidth=.25)
+                ax1.plot([0, max(cpl_distances) / -vel], [0, max(cpl_distances)], 
+                         color="C" + str(c), linewidth=.25)
+                c += 1
+        c = 0
+        for vel in [2, 2.5, 3, 3.5, 4]:
+            ax1.plot([], [], 
+                     color="C" + str(c), linewidth=1, label=str(vel) + " km/s")
+            c += 1
+        ax1.legend(loc="best")
+        ax1.set_ylim(min(cpl_distances) - 3, max(cpl_distances) + 3)
+        ax1.set_ylabel("Distance [km] from station")
+        ax1.set_xlabel("Time [s]")
+        ax1.set_title("Correlations of station " + station_code)
+
+    def plot_allcorrelations_of_station_after_correction(self, station_code, 
+                                                         min_t=-50, max_t=50):
+        """
+        Parameters
+        ----------
+        station_code : TYPE
+            DESCRIPTION.
+        min_t : TYPE, optional
+            DESCRIPTION. The default is -50.
+        max_t : TYPE, optional
+            DESCRIPTION. The default is 50.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        correlation_list = self.get_correlations_of_station(station_code)
+
+        # We retrieve all the station distances.
+        km = 1000
+        cpl_distances = [c.cpl_dist / km for c in correlation_list]
+        f, ax1 = plt.subplots(1, 1, figsize=(6, 15), sharey=True, dpi=300)
+
+        # station_pairs = []
+        for c in correlation_list:
+
+            freqmin = c.processing_parameters.freqmin
+            freqmax = c.processing_parameters.freqmax
+            cpl_dist = c.cpl_dist
+
+            ref_t = self.reference_time
+            average_date = c.average_date
+            iteration = - 1
+            station1 = self.get_station(c.station1_code)
+            station2 = self.get_station(c.station2_code)
+            t_N_lps = (average_date - ref_t) / 86400.0
+            if station1.needs_correction:
+                correction_sta1 = -(
+                    station1.a[iteration] * t_N_lps + station1.b[iteration]
+                )
+            else:
+                correction_sta1 = 0
+            if station2.needs_correction:
+                correction_sta2 = (
+                    station2.a[iteration] * t_N_lps + station2.b[iteration]
+                )
+            else:
+                correction_sta2 = 0
+            shift = correction_sta1 + correction_sta2
+
+            tr = read_correlation_file(c.file_path)
+            tr = tr.normalize()
+            t1, data = trim_correlation_trace(tr, min_t, max_t, freqmin, 
+                                              freqmax)
+            ax1.plot(t1 + shift, data * 3 + cpl_dist / km, 
+                     alpha=0.7, color="k", linewidth=.5)
+            c = 0
+            for vel in [2, 2.5, 3, 3.5, 4]:
+                ax1.plot([0, max(cpl_distances) / vel], [0, max(cpl_distances)], 
+                         color="C" + str(c), linewidth=.25)
+                ax1.plot([0, max(cpl_distances) / -vel], [0, max(cpl_distances)], 
+                         color="C" + str(c), linewidth=.25)
+                c += 1
+        c = 0
+        for vel in [2, 2.5, 3, 3.5, 4]:
+            ax1.plot([], [], 
+                     color="C" + str(c), linewidth=1, label=str(vel) + " km/s")
+            c += 1
+        ax1.legend(loc="best")
+        ax1.set_ylim(min(cpl_distances) - 3, max(cpl_distances) + 3)
+        ax1.set_ylabel("Distance [km] from station")
+        ax1.set_xlabel("Time [s]")
+        ax1.set_title("Correlations of station " + station_code)
