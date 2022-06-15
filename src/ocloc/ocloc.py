@@ -2209,7 +2209,7 @@ class ClockDrift(object):
             )
             ax1.plot(t1, data, label=str(tr.stats.average_date)[:10])
             ax2.plot(
-                t1 + time_shift, data, label=str(tr.stats.average_date)[:10]
+                t1 - time_shift, data, label=str(tr.stats.average_date)[:10]
             )
 
         ax1.set_title(
@@ -2274,7 +2274,7 @@ class ClockDrift(object):
             )
             ax1.plot(t1, data, label=str(tr.stats.average_date)[:10])
             ax2.plot(
-                t1 + time_shift, data, label=str(tr.stats.average_date)[:10]
+                t1 - time_shift, data, label=str(tr.stats.average_date)[:10]
             )
 
         ax1.set_title(
