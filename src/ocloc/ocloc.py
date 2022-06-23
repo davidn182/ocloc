@@ -24,6 +24,43 @@ import sys
 # Public functions.
 
 
+def str2bool(string):
+    """
+    Function to return True if string equals to "true", "t", "yes", "tr"
+
+    Parameters
+    ----------
+    string : str
+        If the value is diffeent from "true", "t", "yes", "tr" it will be 
+        False.
+
+    Raises
+    ------
+    ValueError
+        It has to be a string.
+
+    Returns
+    -------
+    bool
+        DESCRIPTION.
+
+    """
+
+    if not isinstance(string, str):
+        msg = "The value of boolean should be a "
+        msg += "string with either True or False"
+        raise ValueError(msg)
+
+    if string.lower() in ["true", "t", "yes", "tr"]:
+        return True
+    elif string.lower() in ["false", "f", "no", "fa"]:
+        return False
+    else:
+        msg = "For converting sring to boolean we couldnt understand the"
+        msg += " input: " + string
+        raise ValueError(msg)
+
+
 def read_xcorrelations(station1_code, station2_code, path2data_dir):
     """
     Function to load all the available cross-correlation for a given station
@@ -77,6 +114,136 @@ def read_xcorrelations(station1_code, station2_code, path2data_dir):
         correlation_paths.append(correlation_dir)
     return correlation_stream, correlation_paths
 
+
+def _calculate_SNR(correlations):
+    """
+    Function to calcuate the S/N from a list of correlations.
+
+    Parameters
+    ----------
+    correlations : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    check_input_correlation_list(correlations)
+
+    # We create a deep copy of the correlations so that our operations
+    # do not affect anything of the actual correlations.
+    correlations_copy = copy.deepcopy(correlations)
+
+    for c, c_copy in zip(correlations, correlations_copy):
+        # We modify the S/N threshold so that the program calculates the SNR
+        # for all correlations using an apriori estimate of 0s.
+        c_copy.processing_parameters.snr_trh = 0.0
+
+        # For calculating the SNR we need and apriori dt_ins which we will set
+        # to zero.
+        c_copy.dt_ins_station1 = [0]
+        c_copy.dt_ins_station2 = [0]
+
+        # We use the pre-existing method for calculating t_app as 
+        # it also gives as an estimate of the SNRs.
+        with suppress_stdout():
+            c_copy.calculate_t_app()
+
+        # If the t_app is nan it means that the distance threshold between 
+        # both stations is not met. For avoiding these stations we will
+        # simply assume that there is no signal therefore SNR = 0.
+        if np.isnan(c_copy.t_app[-1]):
+            c.snr_a = 0
+            c.snr_c = 0
+            continue
+
+        c.snr_a = c_copy.snr_a
+        c.snr_c = c_copy.snr_c
+
+
+def _calculate_apriori_t_app(correlations):
+    """
+
+
+    Parameters
+    ----------
+    correlations : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    check_input_correlation_list(correlations)
+
+    # Only calculate tapriori if more than two correlations are present.
+    if len(correlations) == 1:
+        correlations[0].t_app[0] = np.nan
+
+    _calculate_SNR(correlations)
+
+    earliest_time = obspy.UTCDateTime("3000-12-12")
+    latest_time = obspy.UTCDateTime("1000-12-12")
+    for c in correlations:
+        snr_trh = c.processing_parameters.snr_trh
+        if c.snr_a < snr_trh or c.snr_c < snr_trh:
+            c.t_app = [np.nan]
+            continue
+
+        if c.average_date < earliest_time:
+            earliest_time = c.average_date
+            earliest_correlation = c
+        if c.average_date > latest_time:
+            latest_time = c.average_date
+            latest_correlation = c
+    if "earliest_correlation" not in locals():
+        return
+    if "latest_correlation" not in locals():
+        return
+    if earliest_correlation is latest_correlation:
+        earliest_correlation.t_app = [np.nan]
+        return
+
+    earliest_tr = read_correlation_file(earliest_correlation.file_path)
+    earliest_tr = earliest_tr.filter(
+        "bandpass", 
+        freqmin=earliest_correlation.processing_parameters.freqmin,
+        freqmax=earliest_correlation.processing_parameters.freqmax,
+        corners=4,
+        zerophase=True)
+
+    latest_tr = read_correlation_file(latest_correlation.file_path)
+    latest_tr = latest_tr.filter(
+        "bandpass", 
+        freqmin=latest_correlation.processing_parameters.freqmin,
+        freqmax=latest_correlation.processing_parameters.freqmax,
+        corners=4,
+        zerophase=True)
+
+    cc = correlate(earliest_tr.data, latest_tr.data, 1000)
+    shift, value = xcorr_max(cc, abs_max=False)
+    time_shift = shift / earliest_tr.stats.sampling_rate
+
+    delta_t = latest_time - earliest_time
+    shift_rate = time_shift / delta_t
+
+    for correlation in correlations:
+
+        if type(correlation.t_app) is not str:
+            if np.isnan(correlation.t_app[0]):
+                continue
+
+        t = correlation.average_date
+        dt = (t - earliest_time) * shift_rate
+
+        if t == earliest_time:
+            correlation.t_app = [0]
+            continue
+
+        else:
+            correlation.t_app = [-dt]
 
 def read_correlation_file(path2file):
     """
@@ -601,9 +768,9 @@ class Station:
         self.project = str(project)
         self.index = index
         self.included_in_inversion = True
-        if needs_correction == "True":
+        if needs_correction:
             self.needs_correction = True
-        elif needs_correction == "False":
+        elif needs_correction == False:
             self.needs_correction = False
         else:
             msg = "Error with station " + self.code
@@ -838,17 +1005,22 @@ class Correlation(object):
                 acausal_until_index = a.split(":")[1]
                 self.causal_until_index = acausal_until_index
 
-        if not ("shift" in locals()):
+        if "shift" not in locals():
             shift = np.nan
             folder_dir = output
+        # Condition to meet minimum SNR.
+        elif snr_a < snr_trh or snr_c < snr_trh:
+            shift = np.nan
+            
         if resp_details:
             self.resp_details = folder_dir
+
         if not isinstance(self.t_app, list):
             self.t_app = [shift]
         else:
             self.t_app.append(shift)
         self.station_separation = cpl_dist
-        # TODO: Calculate signal to noise raito.
+        
         os.chdir(cwd)
 
     def plot(self, min_t=-50, max_t=50):
@@ -1124,38 +1296,41 @@ class ClockDrift(object):
         if not os.path.exists(station_file):
             msg = "Station file couldn't be found: " + station_file
             raise Exception(msg)
-
+    
         stations = []
         with open(station_file) as file:
-            rows = file.readlines()[1:]
-            index = 0
-            for row in rows:
-                columns = row.split()
-                project = columns[0]
-                sensor_code = columns[1]
-                needs_correction = columns[2]
-                latitude = columns[3]
-                longitude = columns[4]
-                elevation = columns[5]
-                elevation = 0 if elevation == "-" else elevation
-                sensor_type = str(row.split()[6])
-                if correlations_of_station_exist(sensor_code, path2data_dir):
-                    sta = Station(
-                        code=sensor_code,
-                        index=index,
-                        needs_correction=needs_correction,
-                        latitude=latitude,
-                        longitude=longitude,
-                        elevation=elevation,
-                        sensor_type=sensor_type,
-                        project=project,
-                    )
-                    stations.append(sta)
-                    index += 1
-                else:
-                    print(
-                        "No correlation file found for station:" + sensor_code
-                    )
+            lines = file.readlines()
+        header = lines[0].split()
+        header = [value.lower() for value in header]
+        rows = lines[1:]
+        index = 0
+        for row in rows:
+            columns = row.split()
+            project = columns[0]
+            sensor_code = columns[1]
+            needs_correction = str2bool(columns[2])
+            latitude = columns[header.index("latitude")]
+            longitude = columns[header.index("longitude")]
+            elevation = columns[header.index("elevation(m)")]
+            elevation = 0 if elevation == "-" else elevation
+            sensor_type = str(columns[header.index("sensortype")])
+            if correlations_of_station_exist(sensor_code, path2data_dir):
+                sta = Station(
+                    code=sensor_code,
+                    index=index,
+                    needs_correction=needs_correction,
+                    latitude=latitude,
+                    longitude=longitude,
+                    elevation=elevation,
+                    sensor_type=sensor_type,
+                    project=project,
+                )
+                stations.append(sta)
+                index += 1
+            else:
+                print(
+                    "No correlation file found for station:" + sensor_code
+                )
         self.stations = stations
         self.station_names = [sta.code for sta in stations]
 
@@ -1254,6 +1429,33 @@ class ClockDrift(object):
             correlation.dt_ins_station1 = []
             correlation.dt_ins_station2 = []
 
+    def calculate_apriori_tapp_4_allcorrelations(self, days_apart=50):
+        print("Calculating the apriori estimates for each stationpair")
+        for i, station1 in enumerate(self.stations):
+            for station2 in self.stations[i + 1:]:
+                sta1 = station1
+                sta2 = station2
+                correlations = self.get_correlations_of_stationpair(
+                    sta1.code, sta2.code
+                )
+                if len(correlations) == 0:
+                    continue
+                for params in self.processing_parameters:
+                    correlations_params = correlations_with_parameters(
+                        correlations, params
+                    )
+                    # If there are no corelations for station pair... skip
+                    if len(correlations_params) == 0:
+                        continue
+
+                    # If there is only one corelation assume the first
+                    # estimate as nan time shift.
+                    if len(correlations_params) == 1:
+                        correlations_params[0].t_app = [np.nan]
+                        continue
+                    # Else calculate the apriori estimate.
+                    _calculate_apriori_t_app(correlations_params)
+
     def calculate_aprioridt_4_allcorrelations(self):
         """
         Function that calculates the apriori dt for all correlation files.
@@ -1325,9 +1527,6 @@ class ClockDrift(object):
 
         """
         # Check if the apriori estimate was already calculated. Except:
-        for c in self.correlations:
-            if c.apriori_dt1 == "Not calculated yet.":
-                self.calculate_aprioridt_4_allcorrelations()
         #  calculate it.
         # for sta in self.stations:
         #     if sta.needs_correction:
@@ -2260,7 +2459,6 @@ class ClockDrift(object):
             station1_code, station2_code
         )
         f, (ax1, ax2) = plt.subplots(2, 1, sharey=True, dpi=300)
-        f.suptitle("Before and after apriori estimation")
         for correlation in correlations:
             tr = read_correlation_file(correlation.file_path)
             try:
@@ -2280,7 +2478,6 @@ class ClockDrift(object):
         ax1.set_title(
             "Before correction "
             + tr.stats.station_pair
-            + "\n time shift from first to lastc  correlation file = "
             + str(time_shift)
         )
         ax2.set_title("After t_app estimation " + tr.stats.station_pair)
@@ -3360,7 +3557,6 @@ class ClockDrift(object):
         fig.set_xticklabels(fig.get_xmajorticklabels(), fontsize=5)
 
     def plot_allcorrelations_of_station(self, station_code, min_t=-50,
-                                        max_t=50):
         """
         Parameters
         ----------
@@ -3396,7 +3592,6 @@ class ClockDrift(object):
             tr = tr.normalize()
             t1, data = trim_correlation_trace(tr, min_t, max_t, freqmin, 
                                               freqmax)
-            ax1.plot(t1, data * 3 + cpl_dist / km, 
                      alpha=0.7, color="k", linewidth=.5)
             c = 0
             for vel in [2, 2.5, 3, 3.5, 4]:
@@ -3490,4 +3685,3 @@ class ClockDrift(object):
         ax1.set_ylim(min(cpl_distances) - 3, max(cpl_distances) + 3)
         ax1.set_ylabel("Distance [km] from station")
         ax1.set_xlabel("Time [s]")
-        ax1.set_title("Correlations of station " + station_code)
