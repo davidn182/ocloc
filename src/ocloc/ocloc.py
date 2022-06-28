@@ -24,43 +24,6 @@ import sys
 # Public functions.
 
 
-def str2bool(string):
-    """
-    Function to return True if string equals to "true", "t", "yes", "tr"
-
-    Parameters
-    ----------
-    string : str
-        If the value is diffeent from "true", "t", "yes", "tr" it will be 
-        False.
-
-    Raises
-    ------
-    ValueError
-        It has to be a string.
-
-    Returns
-    -------
-    bool
-        DESCRIPTION.
-
-    """
-
-    if not isinstance(string, str):
-        msg = "The value of boolean should be a "
-        msg += "string with either True or False"
-        raise ValueError(msg)
-
-    if string.lower() in ["true", "t", "yes", "tr"]:
-        return True
-    elif string.lower() in ["false", "f", "no", "fa"]:
-        return False
-    else:
-        msg = "For converting sring to boolean we couldnt understand the"
-        msg += " input: " + string
-        raise ValueError(msg)
-
-
 def read_xcorrelations(station1_code, station2_code, path2data_dir):
     """
     Function to load all the available cross-correlation for a given station
@@ -768,9 +731,9 @@ class Station:
         self.project = str(project)
         self.index = index
         self.included_in_inversion = True
-        if needs_correction:
+        if needs_correction.lower() in ["true", "t", "yes", "tr"]:
             self.needs_correction = True
-        elif needs_correction == False:
+        elif needs_correction.lower() in ["false", "f", "no", "fa"]:
             self.needs_correction = False
         else:
             msg = "Error with station " + self.code
@@ -1005,7 +968,7 @@ class Correlation(object):
                 acausal_until_index = a.split(":")[1]
                 self.causal_until_index = acausal_until_index
 
-        if "shift" not in locals():
+        if not ("shift" in locals()):
             shift = np.nan
             folder_dir = output
         # Condition to meet minimum SNR.
