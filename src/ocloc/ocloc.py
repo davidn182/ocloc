@@ -1259,24 +1259,23 @@ class ClockDrift(object):
         if not os.path.exists(station_file):
             msg = "Station file couldn't be found: " + station_file
             raise Exception(msg)
-    
+
         stations = []
         with open(station_file) as file:
             lines = file.readlines()
         header = lines[0].split()
-        header = [value.lower() for value in header]
         rows = lines[1:]
         index = 0
         for row in rows:
             columns = row.split()
             project = columns[0]
             sensor_code = columns[1]
-            needs_correction = str2bool(columns[2])
-            latitude = columns[header.index("latitude")]
-            longitude = columns[header.index("longitude")]
-            elevation = columns[header.index("elevation(m)")]
+            needs_correction = columns[2]
+            latitude = columns[3]
+            longitude = columns[4]
+            elevation = columns[5]
             elevation = 0 if elevation == "-" else elevation
-            sensor_type = str(columns[header.index("sensortype")])
+            sensor_type = str(row.split()[6])
             if correlations_of_station_exist(sensor_code, path2data_dir):
                 sta = Station(
                     code=sensor_code,
@@ -1288,6 +1287,10 @@ class ClockDrift(object):
                     sensor_type=sensor_type,
                     project=project,
                 )
+                if sta.needs_correction:
+                    if "starttime" in header:
+                        starttime = columns[header.index("starttime")]
+                        sta.starttime = obspy.UTCDateTime(starttime)
                 stations.append(sta)
                 index += 1
             else:
