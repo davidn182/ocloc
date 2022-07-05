@@ -24,6 +24,247 @@ import sys
 # Public functions.
 
 
+# Addition on July, 5, 2022.
+
+
+def _start_recording_time_of_correlation(station1, station2, correlation,
+                                         reference_time):
+    """
+    It will get the start recording time as the earliest deployment from the
+    OBS involved in the cross-correlation. If we do not know the time
+    when the instrument started recording we will use the reference time
+    given.
+
+    Parameters
+    ----------
+    station1 : ocloc.Station()
+        DESCRIPTION.
+    station2 : ocloc.Station()
+        DESCRIPTION.
+    correlation : ocloc.Correlation()
+        DESCRIPTION.
+
+    Returns
+    -------
+    start_recording_time : obspy.UTCDateTime
+
+    """
+    start_recording_time = obspy.UTCDateTime(reference_time)
+    if station1.needs_correction and station2.needs_correction:
+        if hasattr(station1, 'starttime') and hasattr(station1, 'starttime'):
+            start_recording_time = min[station1.starttime, station2.starttime]
+        elif hasattr(station1, 'starttime'):
+            start_recording_time = obspy.UTCDateTime(station1.starttime)
+        elif hasattr(station2, 'starttime'):
+            start_recording_time = obspy.UTCDateTime(station2.starttime)
+    return start_recording_time
+
+
+def check_snr_thr(correlation):
+    """
+    Function to check whether the minimum signal to noise ratio is met for
+    a single correlation object. If the correlation has the minimum SNR
+    the function returns True, otherwise False.
+
+
+    Parameters
+    ----------
+    correlation : TYPE
+        DESCRIPTION.
+    snr_trh : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    bool
+        DESCRIPTION.
+
+    """
+    snr_trh = correlation.processing_parameters.snr_trh
+    if correlation.snr_a < snr_trh or correlation.snr_c < snr_trh:
+        return False
+    return True
+
+
+def check_station_separation_trh(correlation):
+    """
+    Function to check whether the minimum station separation is met for
+    a single correlation object. If the correlation has the minimum station
+    separation the function returns True, otherwise False.
+
+    Parameters
+    ----------
+    correlation : ocloc.Correlatio object
+        DESCRIPTION.
+
+    Returns
+    -------
+    bool
+        DESCRIPTION.
+    """
+
+    dist_trh = correlation.processing_parameters.dist_trh
+    cpl_dist = correlation.cpl_dist
+    ref_vel = correlation.processing_parameters.ref_vel
+    freqmax = correlation.processing_parameters.freqmax
+    min_wl = ref_vel / freqmax  # Minimum wavelength separation.
+
+    if cpl_dist / min_wl < dist_trh:
+        return False
+    return True
+
+
+def check_xcorr_have_same_parameters(correlations):
+    check_input_correlation_list(correlations)
+    freqmins = [c.processing_parameters.freqmin for c in correlations]
+    freqmaxs = [c.processing_parameters.freqmax for c in correlations]
+    freqmin = list(set(freqmins))
+    freqmax = list(set(freqmaxs))
+    if len(freqmin) != 1 or len(freqmax) != 1:
+        raise Exception(
+            "The processing parameters are different for each" + "correlation"
+        )
+    freqmin = freqmin[0]
+    freqmax = freqmax[0]
+    if len(correlations) < 2:
+        msg = "There should be at least two correlations to use this method"
+        raise Exception(msg)
+
+    sta1 = list(
+        set([correlation.station1_code for correlation in correlations])
+    )
+    sta2 = list(
+        set([correlation.station2_code for correlation in correlations])
+    )
+    if len(sta1) != 1 or len(sta2) != 1:
+        msg = "The first and second station in the correlations are not the "
+        msg += "same for all the correlations."
+        raise Exception(msg)
+    return freqmin, freqmax, sta1, sta2
+
+
+def _calculate_apriori_shift_rate(correlations):
+    check_xcorr_have_same_parameters(correlations)
+    earliest_time = obspy.UTCDateTime("3000-12-12")
+    latest_time = obspy.UTCDateTime("1000-12-12")
+    for c in correlations:
+        # This checks that the correlation meets the SNR threshold.
+        if not check_snr_thr(c):
+            continue
+
+        if c.average_date < earliest_time:
+            earliest_time = c.average_date
+            earliest_correlation = c
+        if c.average_date > latest_time:
+            latest_time = c.average_date
+            latest_correlation = c
+    if earliest_time == obspy.UTCDateTime("3000-12-12"):
+        return np.nan
+    if latest_time == obspy.UTCDateTime("1000-12-12"):
+        return np.nan
+    if earliest_correlation is latest_correlation:
+        return np.nan
+
+    earliest_tr = read_correlation_file(earliest_correlation.file_path)
+    earliest_tr = earliest_tr.filter(
+        "bandpass", 
+        freqmin=earliest_correlation.processing_parameters.freqmin,
+        freqmax=earliest_correlation.processing_parameters.freqmax,
+        corners=4,
+        zerophase=True)
+
+    latest_tr = read_correlation_file(latest_correlation.file_path)
+    latest_tr = latest_tr.filter(
+        "bandpass", 
+        freqmin=latest_correlation.processing_parameters.freqmin,
+        freqmax=latest_correlation.processing_parameters.freqmax,
+        corners=4,
+        zerophase=True)
+
+    cc = correlate(earliest_tr.data, latest_tr.data, 1000)
+    shift, value = xcorr_max(cc, abs_max=False)
+    time_shift = shift / earliest_tr.stats.sampling_rate
+
+    delta_t = latest_time - earliest_time
+    shift_rate = time_shift / delta_t
+    return shift_rate
+
+
+def calculate_apriori_dt_ins(cd, correlations, plot=False, **kwargs):
+    """
+    Calculates de apriori estimate of given several correlation files of the
+    same station pair, given that the correlation was perform in the same
+    order for all the files (meaning station 1 is the same and station 2 is
+    the same)
+
+    Parameters
+    ----------
+    cd: ClockDrift()
+        DESCRIPTION.
+    correlations: list
+      list of Correlations object. You can use the following function
+      to retrieve all the correlations for a given station pair:
+      correlations = ClockDrift.get_correlations_of_stationpair(
+          station1_code,
+          station2_code)
+    if plot is set to tru provide a min_t and t_max to trim the correlation
+    in the times you want to check
+
+    Returns
+    -------
+    None.
+
+    """
+    # Check that all correlations have the same processing params.
+    freqmin, freqmax, _, _ = check_xcorr_have_same_parameters(correlations)
+
+    # Add the snr value as an attribute to each correlation in the list.
+    _calculate_SNR(correlations)
+
+    shift_rate = _calculate_apriori_shift_rate(correlations)
+
+    for correlation in correlations:
+        if np.isnan(shift_rate):
+            correlation.apriori_dt1 = np.nan
+            correlation.apriori_dt2 = np.nan
+            continue
+
+        if not check_snr_thr(correlation):
+            correlation.apriori_dt1 = np.nan
+            correlation.apriori_dt2 = np.nan
+            continue
+
+        if not check_station_separation_trh(correlation):
+            correlation.apriori_dt1 = np.nan
+            correlation.apriori_dt2 = np.nan
+            continue
+
+        sta1 = cd.get_station(correlation.station1_code)
+        sta2 = cd.get_station(correlation.station2_code)
+
+        start_recording_time = (
+            _start_recording_time_of_correlation(sta1, sta2, correlation,
+                                                 cd.reference_time))
+        t = correlation.average_date
+        dt = (t - start_recording_time) * shift_rate
+        if sta1.needs_correction:
+            if sta2.needs_correction:
+                correlation.apriori_dt1 = -dt / 2
+                correlation.apriori_dt2 = -dt / 2
+            else:
+                correlation.apriori_dt1 = -dt
+                correlation.apriori_dt2 = 0
+        elif sta2.needs_correction:
+            correlation.apriori_dt1 = 0
+            correlation.apriori_dt2 = -dt
+        else:
+            msg = "At least one of the stations should need correction"
+            msg += correlation.station1_code + correlation.station2_code
+            raise ValueError(msg)
+
+
+# Until here the modifications from July 5, 2022.
+
 def read_xcorrelations(station1_code, station2_code, path2data_dir):
     """
     Function to load all the available cross-correlation for a given station
@@ -1142,27 +1383,7 @@ class ClockDrift(object):
             >>> cd = Clock_drift(station_file, path2data_dir,
                   reference_time = '2014-08-21T00:00:00.000000Z',
                   list_of_processing_parameters=[params2])#, params3])
-            >>> cd2 = st.copy()
-
-           The two objects are not the same:
-
-            >>> st is st2
-            False
-
-           But they have equal data (before applying further processing):
-
-            >>> st == st2
-            True
-
-        2. The following example shows how to make an alias but not copy the
-           data. Any changes on ``st3`` would also change the contents of
-           ``st``.
-
-            >>> st3 = st
-            >>> st is st3
-            True
-            >>> st == st3
-            True
+            >>> cd2 = cd.copy()
         """
         return copy.deepcopy(self)
 
@@ -1288,8 +1509,8 @@ class ClockDrift(object):
                     project=project,
                 )
                 if sta.needs_correction:
-                    if "starttime" in header:
-                        starttime = columns[header.index("starttime")]
+                    if "Starttime" in header:
+                        starttime = columns[header.index("Starttime")]
                         sta.starttime = obspy.UTCDateTime(starttime)
                 stations.append(sta)
                 index += 1
@@ -1395,33 +1616,6 @@ class ClockDrift(object):
             correlation.dt_ins_station1 = []
             correlation.dt_ins_station2 = []
 
-    def calculate_apriori_tapp_4_allcorrelations(self, days_apart=50):
-        print("Calculating the apriori estimates for each stationpair")
-        for i, station1 in enumerate(self.stations):
-            for station2 in self.stations[i + 1:]:
-                sta1 = station1
-                sta2 = station2
-                correlations = self.get_correlations_of_stationpair(
-                    sta1.code, sta2.code
-                )
-                if len(correlations) == 0:
-                    continue
-                for params in self.processing_parameters:
-                    correlations_params = correlations_with_parameters(
-                        correlations, params
-                    )
-                    # If there are no corelations for station pair... skip
-                    if len(correlations_params) == 0:
-                        continue
-
-                    # If there is only one corelation assume the first
-                    # estimate as nan time shift.
-                    if len(correlations_params) == 1:
-                        correlations_params[0].t_app = [np.nan]
-                        continue
-                    # Else calculate the apriori estimate.
-                    _calculate_apriori_t_app(correlations_params)
-
     def calculate_aprioridt_4_allcorrelations(self):
         """
         Function that calculates the apriori dt for all correlation files.
@@ -1462,7 +1656,48 @@ class ClockDrift(object):
                         correlations_params[0].apriori_dt2 = np.nan
                         continue
                     # Else calculate the apriori estimate.
-                    calculate_apriori_dt(self, correlations_params)
+                    calculate_apriori_dt_ins(self, correlations_params)
+    # def calculate_aprioridt_4_allcorrelations(self):
+    #     """
+    #     Function that calculates the apriori dt for all correlation files.
+    #     Given the all the stations contained in the clock drift object, the
+    #     function calculates all the possible station-pair combinations
+    #     and then calculates the apriori estimate for each of the correlations.
+
+    #     When using different processing parameters, we check if the apriori
+    #     estimate is the same, if it is not then one of the two is wrong
+    #     so we will use the value of 0 as an apriori estimate.
+    #     Returns
+    #     -------
+    #     None.
+
+    #     """
+    #     print("Calculating the apriori estimates for each stationpair")
+    #     for i, station1 in enumerate(self.stations):
+    #         for station2 in self.stations[i + 1:]:
+    #             sta1 = station1
+    #             sta2 = station2
+    #             correlations = self.get_correlations_of_stationpair(
+    #                 sta1.code, sta2.code
+    #             )
+    #             if len(correlations) == 0:
+    #                 continue
+    #             for params in self.processing_parameters:
+    #                 correlations_params = correlations_with_parameters(
+    #                     correlations, params
+    #                 )
+    #                 # If there are no corelations for station pair... skip
+    #                 if len(correlations_params) == 0:
+    #                     continue
+
+    #                 # If there is only one corelation assume the first
+    #                 # estimate as nan time shift.
+    #                 if len(correlations_params) == 1:
+    #                     correlations_params[0].apriori_dt1 = np.nan
+    #                     correlations_params[0].apriori_dt2 = np.nan
+    #                     continue
+    #                 # Else calculate the apriori estimate.
+    #                 calculate_apriori_dt(self, correlations_params)
 
     def calculate_dt_ins(self):
         """
@@ -1493,6 +1728,9 @@ class ClockDrift(object):
 
         """
         # Check if the apriori estimate was already calculated. Except:
+        for c in self.correlations:
+            if c.apriori_dt1 == "Not calculated yet.":
+                self.calculate_aprioridt_4_allcorrelations()
         #  calculate it.
         # for sta in self.stations:
         #     if sta.needs_correction:
@@ -2425,6 +2663,7 @@ class ClockDrift(object):
             station1_code, station2_code
         )
         f, (ax1, ax2) = plt.subplots(2, 1, sharey=True, dpi=300)
+        f.suptitle("Before and after apriori estimation")
         for correlation in correlations:
             tr = read_correlation_file(correlation.file_path)
             try:
@@ -2444,6 +2683,7 @@ class ClockDrift(object):
         ax1.set_title(
             "Before correction "
             + tr.stats.station_pair
+            + "\n time shift from first to lastc  correlation file = "
             + str(time_shift)
         )
         ax2.set_title("After t_app estimation " + tr.stats.station_pair)
@@ -3523,6 +3763,7 @@ class ClockDrift(object):
         fig.set_xticklabels(fig.get_xmajorticklabels(), fontsize=5)
 
     def plot_allcorrelations_of_station(self, station_code, min_t=-50,
+                                        max_t=50):
         """
         Parameters
         ----------
@@ -3558,6 +3799,7 @@ class ClockDrift(object):
             tr = tr.normalize()
             t1, data = trim_correlation_trace(tr, min_t, max_t, freqmin, 
                                               freqmax)
+            ax1.plot(t1, data * 3 + cpl_dist / km, 
                      alpha=0.7, color="k", linewidth=.5)
             c = 0
             for vel in [2, 2.5, 3, 3.5, 4]:
@@ -3651,3 +3893,4 @@ class ClockDrift(object):
         ax1.set_ylim(min(cpl_distances) - 3, max(cpl_distances) + 3)
         ax1.set_ylabel("Distance [km] from station")
         ax1.set_xlabel("Time [s]")
+        ax1.set_title("Correlations of station " + station_code)

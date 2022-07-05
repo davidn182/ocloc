@@ -1,17 +1,17 @@
 # data_dir, station_1, station_2, results_dir_name, nsamples, freqmin, freqmax, cpl_dist, ref_vel, dist_trh, snr_trh, noise_st, apr_dt_st1, apr_dt_st2, dt_err, resp_details 
-/Users/localadmin/Dropbox/GitHub/data/O22_SUH_1430751119_097.sac
-O22
+/Users/localadmin/Dropbox/GitHub/data/O23_SUH_1430751119_097.sac
+O23
 SUH
-O22_SUH_1430751119_097.sac
+O23_SUH_1430751119_097.sac
 90000
 0.2
 0.4
-64114.61766222594
-4500.0
+45499.04945082605
+2500.0
 2.5
-30.0
-240
--0.24
+35.0
+300
+-0.5053707854668305
 0.0
 0.004
 False
