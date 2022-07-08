@@ -2218,10 +2218,6 @@ class ClockDrift(object):
 
             # Aw = np.dot(W, A_dum) # * np.sqrt(W[:,np.newaxis])
             # Bw = np.dot(W, Tobs_dum) # * np.sqrt(W)
-
-            W = np.sqrt(np.diag(W))
-            Aw = np.dot(W, A_dum)
-            Bw = np.dot(Tobs_dum, W)
             
             # Normalize.
             W = W / max(W)
