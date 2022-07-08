@@ -306,7 +306,7 @@ cd = ClockDrift(station_file, path2data_dir,
                 reference_time='2014-08-21T00:00:00.000000Z',
                 list_of_processing_parameters=[params])
 
-calculate_aprioridt_4_allcorrelations(cd)
+cd.calculate_aprioridt_4_allcorrelations()
 cd.calculate_dt_ins()
 cd.calculate_tapp_4_allcorrelations()
 cd.filter_stations()

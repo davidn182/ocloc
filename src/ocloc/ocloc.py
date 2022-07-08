@@ -2222,6 +2222,13 @@ class ClockDrift(object):
             W = np.sqrt(np.diag(W))
             Aw = np.dot(W, A_dum)
             Bw = np.dot(Tobs_dum, W)
+            
+            # Normalize.
+            W = W / max(W)
+            
+            W = np.diag(W)
+            Aw = W @ A_dum
+            Bw = W @ Tobs_dum
             x, _, rank, _, = np.linalg.lstsq(Aw, Bw, rcond=rcond)
         else:
             msg = "You have to choose an inversion method that can be 'lstsq'"
