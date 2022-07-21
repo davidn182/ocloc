@@ -52,7 +52,7 @@ def _start_recording_time_of_correlation(station1, station2, correlation,
     start_recording_time = obspy.UTCDateTime(reference_time)
     if station1.needs_correction and station2.needs_correction:
         if hasattr(station1, 'starttime') and hasattr(station1, 'starttime'):
-            start_recording_time = min[station1.starttime, station2.starttime]
+            start_recording_time = min([station1.starttime, station2.starttime])
         elif hasattr(station1, 'starttime'):
             start_recording_time = obspy.UTCDateTime(station1.starttime)
         elif hasattr(station2, 'starttime'):
@@ -438,9 +438,12 @@ def _calculate_apriori_t_app(correlations):
         if type(correlation.t_app) is not str:
             if np.isnan(correlation.t_app[0]):
                 continue
-
         t = correlation.average_date
-        dt = (t - earliest_time) * shift_rate
+
+        # Time when the instrument started recording.
+        starttime = correlation._starttime
+        # dt = (t - earliest_time) * shift_rate
+        dt = (t - starttime) * shift_rate
 
         if t == earliest_time:
             correlation.t_app = [0]
@@ -448,6 +451,7 @@ def _calculate_apriori_t_app(correlations):
 
         else:
             correlation.t_app = [-dt]
+
 
 def read_correlation_file(path2file):
     """
@@ -1212,19 +1216,14 @@ class Correlation(object):
         if not ("shift" in locals()):
             shift = np.nan
             folder_dir = output
-        # Condition to meet minimum SNR.
-        elif snr_a < snr_trh or snr_c < snr_trh:
-            shift = np.nan
-            
         if resp_details:
             self.resp_details = folder_dir
-
         if not isinstance(self.t_app, list):
             self.t_app = [shift]
         else:
             self.t_app.append(shift)
         self.station_separation = cpl_dist
-        
+        # TODO: Calculate signal to noise raito.
         os.chdir(cwd)
 
     def plot(self, min_t=-50, max_t=50):
@@ -1377,7 +1376,7 @@ class ClockDrift(object):
 
         .. rubric:: Examples
 
-        1. Create a ClockDrift and copy it
+        Create a ClockDrift and copy it
 
             >>> from ocloc import ClockDrift
             >>> cd = Clock_drift(station_file, path2data_dir,
@@ -2221,7 +2220,6 @@ class ClockDrift(object):
             
             # Normalize.
             W = W / max(W)
-            
             W = np.diag(W)
             Aw = W @ A_dum
             Bw = W @ Tobs_dum
