@@ -263,7 +263,81 @@ def calculate_apriori_dt_ins(cd, correlations, plot=False, **kwargs):
             raise ValueError(msg)
 
 
+def plot_matrix(matrix, column_headers, row_headers, xlabel, ylabel, cmap_title):
+    """
+    Function to make a colormap.
+
+    Parameters
+    ----------
+    matrix : TYPE
+        DESCRIPTION.
+    column_headers : TYPE
+        DESCRIPTION.
+    row_headers : TYPE
+        DESCRIPTION.
+    xlabel : TYPE
+        DESCRIPTION.
+    ylabel : TYPE
+        DESCRIPTION.
+    cmap_title : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    Example: 
+        column_headers_SNR = [10, 20, 30, 40, 50, 60]
+        row_headers_dist_trh = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+        matrix = []
+        for snr_trh in column_headers_SNR:
+            column = []
+            for dist_trh in row_headers_dist_trh:
+                iteration = "snr_trh_" + str(snr_trh) + "__dist_trh_" + str(dist_trh)
+                file_name = "ClockDrift_"+iteration+".obj"
+                path_2_clockdrift = os.path.join(dir_ClockDrifts, file_name)
+                with open(path_2_clockdrift, 'rb') as f:
+                    cd = pickle.load(f)       
+                correlations = [c for c in cd.correlations if not np.isnan(c.t_app[-1])]
+                column.append(len(correlations))
+            matrix.append(column)
+
+        plot_matrix(matrix, column_headers_SNR, row_headers_dist_trh, 
+            xlabel="SNR", ylabel="Distance threshold", 
+            cmap_title="Eligible cross-correlations")
+
+    """
+    df = pd.DataFrame(
+        columns=column_headers, index=row_headers, data=np.array(matrix).T
+    )
+
+    sns.set(font_scale=0.6)
+    plt.figure(dpi=300)
+    g = sns.heatmap(
+        df,
+        cmap=sns.diverging_palette(240, 10, n=9, as_cmap=True),
+        xticklabels=True,
+        yticklabels=True,
+        linewidths=0.1,
+        linecolor="k",
+        cbar_kws={
+            "label": cmap_title
+        },
+        # vmin=-2.0,vmax=2.0,
+        # center=0.00,
+    )
+    cbar = g.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=10)
+    g.figure.axes[-1].yaxis.label.set_size(12)
+    # g.set_facecolor('white')
+    g.set_facecolor("dimgrey")
+    plt.xlabel(xlabel, fontsize=12)
+    plt.ylabel(ylabel, fontsize=12)
+    plt.show()
+    matplotlib.rc_file_defaults()
+
 # Until here the modifications from July 5, 2022.
+
 
 def read_xcorrelations(station1_code, station2_code, path2data_dir):
     """
