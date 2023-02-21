@@ -7,6 +7,9 @@ pandas
 obspy
 numpy
 seaborn
+folium
+pathlib
+jupyter
 
 # SETUP RELATED
 setuptools_scm
@@ -27,6 +30,7 @@ myst-parser
 nbsphinx
 nbsphinx_link
 pandoc
+sphinx-tabs
 
 # FOR TESTING
 asv
