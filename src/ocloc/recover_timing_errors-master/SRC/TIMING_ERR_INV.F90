@@ -161,7 +161,7 @@ do k=ac2_env,c2_env
     no_troughs=no_troughs+1
   endif
 enddo
-
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! Store peaks and troughs and their times
 allocate(peaks(4,no_peaks), troughs(4,no_troughs))
 allocate(peak_times(no_peaks), trough_times(no_troughs))
