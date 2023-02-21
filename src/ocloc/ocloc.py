@@ -14,6 +14,10 @@ import os
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
+import matplotlib.cm as cm
+from matplotlib.colorbar import Colorbar
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.colors import Normalize
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -23,6 +27,59 @@ import sys
 
 # Public functions.
 
+
+def confidence_interval_95(data):
+    """Calculate the 95% confidence interval of a list of data points.
+    To calculate a 95% confidence interval for a population mean, we use the
+    following steps:
+
+    1. Find the sample mean (x̄) and sample standard deviation (s) of your data
+
+    2. Determine the appropriate z-score for a 95% confidence level. For a
+    two-tailed test with a 95% confidence level, the z-score is 1.96.
+
+    3. Calculate the margin of error (ME) by multiplying the z-score by the
+    standard deviation of the sample. ME = z*s/√n
+
+    4. Calculate the lower and upper bounds of the interval by adding and
+    subtracting the margin of error from the sample mean.
+
+    Interval = x̄ + ME or x̄ - ME
+
+    Lower bound = x̄ - ME
+
+    Upper bound = x̄ + ME
+
+    5. The interval [lower bound, upper bound] is your 95% confidence interval
+     for the population mean.
+
+    Note: It is important to have a large sample size (n>30) and a normal
+    distribution of the sample data for this method to be valid.
+    Args:
+        data (list): A list of data points.
+
+    Returns:
+        tuple: The lower and upper bounds of the 95% confidence interval.
+    """
+    import numpy as np
+    from scipy.stats import norm
+    # calculate mean and standard deviation
+    mean = np.mean(data)
+    std_dev = np.std(data)
+
+    # calculate the z-score for a 95% confidence level
+    z = norm.ppf(0.975)
+
+    # calculate the margin of error
+    margin_error = z * (std_dev / np.sqrt(len(data)))
+
+    # calculate the lower and upper bounds of the interval
+    lower_bound = mean - margin_error
+    upper_bound = mean + margin_error
+
+    # print the results
+    print(f"95% Confidence Interval: [{lower_bound}, {upper_bound}]")
+    return lower_bound, upper_bound
 
 # Addition on July, 5, 2022.
 
@@ -286,7 +343,8 @@ def plot_matrix(matrix, column_headers, row_headers, xlabel, ylabel, cmap_title)
     -------
     None.
 
-    Example: 
+    Example:
+        dir_ClockDrifts = "/Users/localadmin/Dropbox/GitHub/testing_ocloc/clock_drifts/"
         column_headers_SNR = [10, 20, 30, 40, 50, 60]
         row_headers_dist_trh = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
         matrix = []
@@ -315,7 +373,7 @@ def plot_matrix(matrix, column_headers, row_headers, xlabel, ylabel, cmap_title)
     plt.figure(dpi=300)
     g = sns.heatmap(
         df,
-        cmap=sns.diverging_palette(240, 10, n=9, as_cmap=True),
+        cmap="RdYlGn", # sns.diverging_palette(240, 10, n=9, as_cmap=True),
         xticklabels=True,
         yticklabels=True,
         linewidths=0.1,
@@ -333,6 +391,8 @@ def plot_matrix(matrix, column_headers, row_headers, xlabel, ylabel, cmap_title)
     g.set_facecolor("dimgrey")
     plt.xlabel(xlabel, fontsize=12)
     plt.ylabel(ylabel, fontsize=12)
+    plt.xticks(fontsize= 12)
+    plt.yticks(fontsize= 12)
     plt.show()
     matplotlib.rc_file_defaults()
 
@@ -391,6 +451,56 @@ def read_xcorrelations(station1_code, station2_code, path2data_dir):
         correlation_stream += correlation_tr
         correlation_paths.append(correlation_dir)
     return correlation_stream, correlation_paths
+
+
+def get_last_a_value(cd):
+    """
+    This function creates a dictionary where the keys are the station names
+    and the values are the a[-1] values. Station names can be taken from
+    cd.stations[i].code. Only stations that .needs_correction == True
+    should be included in the dictionary.
+
+    Parameters
+    ----------
+    cd : ClockDrift
+        The clock drift object.
+
+    Returns
+    -------
+    last_a_value : dict
+        The dictionary with the a[-1] values.
+
+    """
+    last_a_value = {}
+    for station in cd.stations:
+        if station.needs_correction:
+            last_a_value[station.code] = station.a[-1]
+    return last_a_value
+
+
+def get_last_b_value(cd):
+    """
+    This function creates a dictionary where the keys are the station names
+    and the values are the b[-1] values. Station names can be taken from
+    cd.stations[i].code. Only stations that .needs_correction == True
+    should be included in the dictionary.
+
+    Parameters
+    ----------
+    cd : ClockDrift
+        The clock drift object.
+
+    Returns
+    -------
+    last_b_value : dict
+        The dictionary with the b[-1] values.
+
+    """
+    last_b_value = {}
+    for station in cd.stations:
+        if station.needs_correction:
+            last_b_value[station.code] = station.b[-1]
+    return last_b_value
 
 
 def _calculate_SNR(correlations):
@@ -1333,7 +1443,6 @@ class Correlation(object):
         ax1.legend(loc=2)
         plt.tight_layout()
         plt.show()
-    
 
     def plot_causal_n_acausal(self, min_t=-50, max_t=50):
         """
@@ -2221,9 +2330,11 @@ class ClockDrift(object):
                 for name in matrix_A.columns:
                     if sta.code in name:
                         found = True
+                        sta.included_in_last_inversion = True
                         break
                 if not found:
                     print("No t_app found for Station: " + sta.code)
+                    sta.included_in_last_inversion = False
 
     def solve_eq(self, method="lstsq", rcond=None):
         """
@@ -2262,7 +2373,7 @@ class ClockDrift(object):
         if method == "lstsq":
             print("Calculating a and b for each station.")
             x, _, rank, _, = np.linalg.lstsq(A_dum, Tobs_dum, rcond=rcond)
-
+            self.rank_matrix = rank
         elif method == "weighted_lstsq":
             print("Calculating a and b for each station.")
             print("The weighting is done based on the station separation.")
@@ -2298,6 +2409,7 @@ class ClockDrift(object):
             Aw = W @ A_dum
             Bw = W @ Tobs_dum
             x, _, rank, _, = np.linalg.lstsq(Aw, Bw, rcond=rcond)
+            self.rank_matrix = rank
         else:
             msg = "You have to choose an inversion method that can be 'lstsq'"
             msg += "for least squares inversion or 'weighted_lstsq' for "
@@ -2485,9 +2597,9 @@ class ClockDrift(object):
             avg_dates_witout_t_app = sorted(
                 dates_of_correlations_without_t_app(self, station.code)
             )
-            if len(avg_dates_witout_t_app)>0:
+            if len(avg_dates_witout_t_app) > 0:
                 dates_witout_t_app = {avg_dates_witout_t_app[0]: 1}
-                
+
                 for date in avg_dates_witout_t_app[1:]:
                     new_key = True
                     # Check if date already in dictionary and if so then add to
@@ -2497,7 +2609,8 @@ class ClockDrift(object):
                         new_key = False
                         continue
                     # Check if the difference between the dates and the date we
-                    # are checking is smaller than the days_apart argument given
+                    # are checking is smaller than the days_apart argument
+                    # given
                     # as an input.
                     for date_counted in dates_witout_t_app.keys():
                         diff_date = abs(obs_t(date_counted) - obs_t(date))
@@ -2550,7 +2663,8 @@ class ClockDrift(object):
                     axs[1].set_xticks(X, list(dates_witout_t_app.keys()))
                     axs[0].set_title(station.code)
                     for ax in axs:
-                        ax.set_xlabel("Average date +/- " + str(days_apart) + " days")
+                        ax.set_xlabel("Average date +/- " + str(days_apart) +
+                                      " days")
                         ax.set_ylabel("# of crosscorrelations")
                         ax.legend()
                     plt.show()
@@ -2575,14 +2689,14 @@ class ClockDrift(object):
                 axs[1].set_xticks(X, list(dates_witout_t_app.keys()))
                 axs[0].set_title(station.code)
                 for ax in axs:
-                    ax.set_xlabel("Average date +/- " + str(days_apart) + " days")
+                    ax.set_xlabel("Average date +/- " + str(days_apart) +
+                                  " days")
                     ax.set_ylabel("# of crosscorrelations")
                     ax.legend()
                 plt.show()
 
-    def plot_correlations_of_stationpair(
-        self, station1_code, station2_code, iteration=-1, min_t=-50, max_t=30
-    ):
+    def plot_correlations_of_stationpair(self, station1_code, station2_code,
+                                         iteration=-1, min_t=-50, max_t=30):
         """
         Parameters
         ----------
@@ -2601,40 +2715,54 @@ class ClockDrift(object):
         """
 
         correlation_list = self.get_correlations_of_stationpair(
-            station1_code, station2_code
-        )
-        # station1 = self.get_station(correlation_list[0].station1_code)
-        # station2 = self.get_station(correlation_list[0].station2_code)
+            station1_code, station2_code)
 
-        # ref_t = self.reference_time
-
-        # As some traces were processed differently we will separate the plots
-        # into the groups of traces that share the same processing parameters.
+        # As some traces were processed differently we will separate the
+        # plots into the groups of traces that share the same processing
+        # parameters.
         for params in self.processing_parameters:
             correlations = correlations_with_parameters(
-                correlation_list, params
-            )
+                correlation_list, params)
+
+            # Convert dates to integers to be used as indices for the
+            #  colormap
+            dates = [c.average_date for c in correlations]
+            min_date = min(dates)
+            dates = [int(date - min_date) for date in dates]
+            norm = Normalize(vmin=min(dates), vmax=max(dates))
+            dates_norm = norm(dates)
+
+            # Use a colormap to assign colors to the lines
+            cmap = cm.get_cmap('viridis')
+            colors = cmap(dates_norm)
 
             f, ax1 = plt.subplots(1, 1, sharey=True, dpi=300)
 
-            for correlation in correlations:
-                # average_date = correlation.average_date
+            for i, correlation in enumerate(correlations):
                 freqmin = correlation.processing_parameters.freqmin
                 freqmax = correlation.processing_parameters.freqmax
                 tr = read_correlation_file(correlation.file_path)
-                t1, data = trim_correlation_trace(
-                    tr, min_t, max_t, freqmin, freqmax
-                )
-                ax1.plot(
-                    t1, data, label=str(tr.stats.average_date)[:10], alpha=0.7
-                )
+                t1, data = trim_correlation_trace(tr, min_t, max_t,
+                                                  freqmin, freqmax)
+                ax1.plot(t1, data, color=colors[i], alpha=0.7,
+                         label=str(tr.stats.average_date)[:10])
 
-            ax1.set_title(
-                "Correlations of station pair: " + tr.stats.station_pair
-            )
+            # Create an Axes instance for the colorbar
+            divider = make_axes_locatable(ax1)
+            cax = divider.append_axes("bottom", size="5%", pad=0.5)
+            # Create the colorbar using the Axes instance
+            colorbar = Colorbar(cax, cmap=cmap, orientation='horizontal')
+            colorbar.set_label('Dates')
+            # Set the tick locations and labels
+            colorbar.ax.set_xticks(dates_norm)
+            labels = [str(c.average_date)[:10] for c in correlations]
+            colorbar.ax.set_xticklabels(labels)
+
+            ax1.set_title("Correlations of station pair: "
+                          + tr.stats.station_pair)
             ax1.set_xlabel("Time [s]")
-            ax1.set_ylabel("Amplitudes")
-            ax1.legend(loc=2)
+            ax1.axes.get_yaxis().set_visible(False)
+            # ax1.legend(loc=2)
             plt.tight_layout()
             plt.show()
 
@@ -3025,7 +3153,8 @@ class ClockDrift(object):
         ax1.set_title("Fluctuation of a values")
         ax2.set_title("Fluctuation of b values")
         plt.xlabel("Iteration")
-        plt.ylabel("a value")
+        ax1.set_ylabel("a value")
+        ax1.set_ylabel("b value")
         plt.tight_layout()
         plt.show()
 
