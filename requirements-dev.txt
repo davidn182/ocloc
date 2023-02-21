@@ -10,6 +10,7 @@ seaborn
 folium
 pathlib
 jupyter
+jupyter_server
 
 # SETUP RELATED
 setuptools_scm
