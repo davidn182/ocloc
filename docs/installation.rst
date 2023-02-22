@@ -26,21 +26,28 @@ ocloc and then clone the repository
 
 .. code-block:: console
 
-   (ocloc_env) $ git clone https://github.com/davidn182/ocloc.git
-   (ocloc_env) $ cd ocloc
+   $ git clone https://github.com/davidn182/ocloc.git
+   $ cd ocloc
 
 2. Enter the following command to create a new virtual environment named ``ocloc_env``
+
 .. code-block:: console
 
    $ python3 -m venv ocloc_env
-   (ocloc_env) $ source ocloc_env/bin/activate
+   $ source ocloc_env/bin/activate
 
 3. Install the required packages by running the following command:
 
 .. code-block:: console
+
    (ocloc_env) $ pip install -r requirements-dev.txt
+
+4. To use this environment in the Jupyter notebook, you have to register it first:
+
+.. code-block:: console
+
    (ocloc_env) $ python -m ipykernel install --user --name ocloc_env
-   (ocloc_env) $ deactivate
+
 
 Whenever you want to use ocloc, you will need to activate the virtual environment
 by running the following command:
