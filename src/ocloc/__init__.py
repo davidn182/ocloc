@@ -1,1 +1,1 @@
-from .ocloc import *
+from ocloc import *
