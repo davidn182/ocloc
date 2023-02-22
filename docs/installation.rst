@@ -21,44 +21,38 @@ version is available from your command line. You can check this by running:
 
 Installation steps
 ==================
-
-
-1. Open your terminal and navigate to the directory where you want to create
- your virtual environment.
-
-2. Enter the following command to create a new virtual environment named "myenv" 
-
-.. code-block:: console
-
-   $ python3 -m venv ocloc_env
-
-3. Activate the virtual environment by running the following command:
-
-.. code-block:: console
-
-   $ source ocloc_env/bin/activate
-
-Now let's clone the project. Notice that the project is called ocloc 
-and the virtual environment is called ocloc_env. If you want to use ocloc for
-the name of the virtual environment, make sure to install in a different
-directory. For example, you can install the virtual environment in your home directory
-and clone the project in your working directory.
+1. Open your terminal and navigate to the directory where you want to clone 
+ocloc and then clone the repository
 
 .. code-block:: console
 
    (ocloc_env) $ git clone https://github.com/davidn182/ocloc.git
    (ocloc_env) $ cd ocloc
 
-4. Install the required packages by running the following command:
+2. Enter the following command to create a new virtual environment named ``ocloc_env``
+.. code-block:: console
+
+   $ python3 -m venv ocloc_env
+   (ocloc_env) $ source ocloc_env/bin/activate
+
+3. Install the required packages by running the following command:
 
 .. code-block:: console
    (ocloc_env) $ pip install -r requirements-dev.txt
+   (ocloc_env) $ python -m ipykernel install --user --name ocloc_env
+   (ocloc_env) $ deactivate
 
-5. Once you have finished working in your virtual environment, you can 
-deactivate it by running the following command: 
+Whenever you want to use ocloc, you will need to activate the virtual environment
+by running the following command:
+
+.. code-block:: console
+
+   $ source ocloc_env/bin/activate
+
+and to deactivate it, run the following command:
 
 .. code-block:: console
 
    (ocloc_env) $ deactivate
 
-Now you can run the jupyter notebooks located at ``/ocloc/tutorials/`` in your own laptop.
+4. Now you can run the jupyter notebooks located at ``/ocloc/tutorials/`` in your own laptop.
