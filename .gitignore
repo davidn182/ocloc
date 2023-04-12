@@ -1,3 +1,33 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.coverage
+*.log
+.vscode/settings.json
+
+# Sphinx build output
+_build/
+dist/
+
+# Environment files
+*.swp
+*.swo
+*.swn
+*.log
+*.bak
+*.aux
+*.out
+
+# macOS files
+.DS_Store
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
