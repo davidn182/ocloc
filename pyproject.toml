@@ -1,3 +1,19 @@
+[tool.poetry]
+name = "ocloc"
+version = "0.1.0"
+description = "OCloC (OBS Clock Correction) is an open-source project dedicated to detect and correct timing errors when using passive seismic records. This Python Package is particularly relevant for projects that use Ocean-Bottom Seismometers because their lack of GPS connection can, and most certainly will, induce a timing error."
+authors = ["David Naranjo <davidn182@hotmail.com>"]
+license = "Apache-2.0"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+obspy = "^1.4.0"
+matplotlib = "^3.7.2"
+pandas = "^2.0.3"
+seaborn = "^0.12.2"
+folium = "^0.14.0"
+jupyter = "^1.0.0"
+
 [build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
