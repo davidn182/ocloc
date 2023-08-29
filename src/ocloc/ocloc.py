@@ -5,7 +5,7 @@ Created on Wed Mar 24 15:58:16 2021
 modified June 2, 2021
 @author: davidnaranjo
 """
-import folium
+
 import copy
 from contextlib import contextmanager
 import obspy
@@ -1514,7 +1514,7 @@ class Correlation(object):
         plt.show()
 
 
-def plot_osm_image(df: pd.DataFrame, zoom: int = 9) -> folium.folium.Map:
+def plot_osm_image(df, zoom=9):
     """
     Plot an image from OpenStreetMap using folium.
 
@@ -1525,6 +1525,10 @@ def plot_osm_image(df: pd.DataFrame, zoom: int = 9) -> folium.folium.Map:
     Returns:
         folium.folium.Map: Map with sensor locations plotted
     """
+    try:
+        import folium
+    except ImportError:
+        raise ImportError("You must install folium to use this function.")
     lats: pd.Series = df["LATITUDE"]
     lons: pd.Series = df["LONGITUDE"]
     f: folium.folium.Figure = folium.Figure(width=1000, height=500)
@@ -1739,6 +1743,42 @@ class ClockDrift(object):
                 )
         self.stations = stations
         self.station_names = [sta.code for sta in stations]
+
+    def add_attributes_from_csv(self, csv_file):
+        """
+        Add attributes from a CSV file to the stations in a Cd object that 
+        need correction.
+
+        This function reads a CSV file and adds start_time_gps, 
+        gps_sync_time, stop_recording,
+        end_time_recovery, and skew_ms as attributes to each station in 
+        the Cd object that requires correction (i.e., 
+        station.needs_correction is True).
+
+        Parameters:
+        cd (Cd): The Cd object containing stations that may need correction.
+        csv_file (str): Path to the CSV file containing the data to add.
+
+        Returns:
+        None
+        """
+        # Load the data
+        data = pd.read_csv(csv_file)
+
+        # Iterate over each station in cd
+        for station in self.stations:
+            if station.needs_correction:
+                # Get the row in the data for this station
+                station_data = data[data['sensor_code']
+                                    == station.code].iloc[0]
+
+                # Add the required attributes to the station
+                station.start_time_gps = station_data['start_time_gps']
+                station.gps_sync_time = station_data['gps_sync_time']
+                station.stop_recording = station_data['stop_recording']
+                station.end_time_recovery = station_data['end_time_recovery']
+                station.skew_ms = station_data['skew_ms']
+                station.skew_s = station_data['skew_ms'] * 1e-6
 
     def get_correlations_of_station(self, station_code):
         """
@@ -3156,6 +3196,7 @@ class ClockDrift(object):
             ax2.set_xlabel("Time [s]")
             ax2.set_ylabel("Amplitudes")
             ax1.set_ylabel("Amplitudes")
+            ax1.set_xlim(min_t, max_t)
             ax1.legend(loc=2)
             ax2.legend(loc=2)
             plt.tight_layout()
