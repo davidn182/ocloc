@@ -1615,12 +1615,6 @@ class ClockDrift(object):
             msg = "list of processing parameters should be a list containing"
             msg += " the different Processing Parameter objects."
             raise Exception(msg)
-        for lst in list_of_processing_parameters:
-            str_type = "<class 'ocloc.ProcessingParameters'>"
-            if str(type(lst)) != str_type:
-                msg = "The objects inside the list should be of the type "
-                msg += "ProcessingParameters"
-                raise Exception(msg)
         self.processing_parameters = list_of_processing_parameters
 
     def set_correlations(self, path2data_dir):
