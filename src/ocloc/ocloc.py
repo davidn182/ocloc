@@ -1097,14 +1097,13 @@ class ProcessingParameters:
 
     def __init__(
         self,
-        freqmin=0.15,  # Low freq. for the bandpass filter
-        freqmax=0.3,  # High freq. for the bandpass filter
-        ref_vel=2500,  # m/s
-        dist_trh=2.0,  # Min station separation in terms of wavelength
-        snr_trh=10,  # Signal-to-noise ratio threshold
+        freqmin=0.2,   # Low freq. for the bandpass filter
+        freqmax=0.4,   # High freq. for the bandpass filter
+        ref_vel=4500,  # m/s
+        dist_trh=2.5,  # Min station separation in terms of wavelength
+        snr_trh=30,    # Signal-to-noise ratio threshold
         noise_st=240,  # start of the noise window.
-        dt_err=0.004,  # Sampling interval must be multiple of this
-        # value.
+        dt_err=0.004,  # Sampling interval must be multiple of this value.
         resp_details=False,
     ):
         self.freqmin = float(freqmin)
