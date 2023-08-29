@@ -13,6 +13,14 @@
 # import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
+# If extensions (or modules to document with autodoc) are in another directory,
+# add these directories to sys.path here.
+import os
+import sys
+#module_path = os.path.abspath(os.path.join('../src/ocloc'))
+#if module_path not in sys.path:
+#    sys.path.append(module_path)
+#from ocloc import ProcessingParameters, ClockDrift, suppress_stdout
 
 # -- Project information -----------------------------------------------------
 
@@ -52,7 +60,8 @@ extensions = [
     'IPython.sphinxext.ipython_directive',
     'myst_parser',
     'nbsphinx',
-    'nbsphinx_link'
+    'nbsphinx_link',
+    'sphinx.ext.autosummary'
 ]
 
 panels_add_bootstrap_css = False
