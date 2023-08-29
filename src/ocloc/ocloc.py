@@ -873,11 +873,6 @@ def check_input_correlation_list(correlation_list):
         raise Exception(err)
     if len(correlation_list) == 0:
         print("No elements in correlations_list")
-    else:
-        for c in correlation_list:
-            str_type = "<class 'ocloc.Correlation'>"
-            if str(type(c)) != str_type:
-                raise Exception("list doesn't contain Correlation objects")
 
 
 def correlations_with_parameters(correlation_list, parameters):
