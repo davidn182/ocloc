@@ -6,7 +6,6 @@ from obspy.signal.cross_correlation import correlate_template
 import seaborn as sns
 from obspy.signal.cross_correlation import correlate, xcorr_max
 import numpy as np
-from obspy.signal.trigger import aic_simple
 # from seismos import obspy_ext
 import obspy
 import os
