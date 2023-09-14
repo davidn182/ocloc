@@ -17,10 +17,10 @@
 # add these directories to sys.path here.
 import os
 import sys
-#module_path = os.path.abspath(os.path.join('../src/ocloc'))
-#if module_path not in sys.path:
+# module_path = os.path.abspath(os.path.join('../src/ocloc'))
+# if module_path not in sys.path:
 #    sys.path.append(module_path)
-#from ocloc import ProcessingParameters, ClockDrift, suppress_stdout
+# from ocloc import ProcessingParameters, ClockDrift, suppress_stdout
 
 # -- Project information -----------------------------------------------------
 
