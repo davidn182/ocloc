@@ -6,12 +6,13 @@ import pandas as pd
 import time
 import os
 import obspy
-from ocloc import ProcessingParameters, ClockDrift, suppress_stdout
-from ocloc import ClockDrift, read_correlation_file, trim_correlation_trace, correlations_with_parameters
+
 import sys
 module_path = os.path.abspath(os.path.join('../src/ocloc'))
 if module_path not in sys.path:
     sys.path.append(module_path)
+    from ocloc import ProcessingParameters, ClockDrift, suppress_stdout
+    from ocloc import ClockDrift, read_correlation_file, trim_correlation_trace, correlations_with_parameters
 # Importing the main code.
 
 
@@ -258,7 +259,13 @@ def plot_correlation_beforeNafter_correction(
         )
 
         f, (ax1, ax2, ax3) = plt.subplots(
-            3, 1, sharey=True, sharex=True, dpi=300)
+            3, 1, sharey=True, sharex=True, figsize=(10, 12), dpi=300)
+        from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
+        # Create inset axes for zoomed plots on the upper right corner
+        axins1 = inset_axes(ax1, width="30%", height="60%", loc=1)
+        axins2 = inset_axes(ax2, width="30%", height="60%", loc=2)
+        axins3 = inset_axes(ax3, width="30%", height="60%", loc=3)
 
         for correlation in correlations:
             average_date = correlation.average_date
@@ -282,21 +289,34 @@ def plot_correlation_beforeNafter_correction(
             t1, data = trim_correlation_trace(
                 tr, min_t, max_t, freqmin, freqmax
             )
-            ax1.plot(
-                t1, data, label=str(tr.stats.average_date)[:10], alpha=0.7
-            )
-            ax2.plot(
-                t1 + shift_ocloc,
-                data,
-                # label=str(tr.stats.average_date)[:10],
-                alpha=0.7,
-            )
-            ax3.plot(
-                t1 + shift_skew,
-                data,
-                # label=str(tr.stats.average_date)[:10],
-                alpha=0.7,
-            )
+            ax1.plot(t1, data, label=str(
+                tr.stats.average_date)[:10], alpha=0.7)
+            ax2.plot(t1 + shift_ocloc, data, alpha=0.7)
+            ax3.plot(t1 + shift_skew, data, alpha=0.7)
+
+            # Plotting the same data on the insets
+            axins1.plot(t1, data, alpha=0.7)
+            axins2.plot(t1 + shift_ocloc, data, alpha=0.7)
+            axins3.plot(t1 + shift_skew, data, alpha=0.7)
+
+        # Setting the x-limits for the insets to zoom between -20 and -10
+        # seconds
+        axins1.set_xlim(-20, -10)
+        axins2.set_xlim(-20, -10)
+        axins3.set_xlim(-20, -10)
+
+        # Remove tick labels for the insets
+        axins1.set_xticklabels([])
+        axins1.set_yticklabels([])
+        axins2.set_xticklabels([])
+        axins2.set_yticklabels([])
+        axins3.set_xticklabels([])
+        axins3.set_yticklabels([])
+
+        # Indicate the zoom effect on the main plots
+        ax1.indicate_inset_zoom(axins1, edgecolor="black")
+        ax2.indicate_inset_zoom(axins2, edgecolor="black")
+        ax3.indicate_inset_zoom(axins3, edgecolor="black")
 
         f.suptitle(
             "Correction applied before and after inversion no: "
@@ -309,25 +329,13 @@ def plot_correlation_beforeNafter_correction(
         ax2.set_ylabel("Amplitudes")
         ax1.set_ylabel("Amplitudes")
         ax1.set_xlim(min_t, max_t)
-        ax1.legend(loc=2)
-        ax2.legend(loc=2)
+        # ax1.legend(loc=2)
+        # ax2.legend(loc=2)
         plt.tight_layout()
         plt.show()
 
 
-# %%
-for station in cd.stations:
-    if station.needs_correction:
-        plot_correlation_beforeNafter_correction(
-            cd, "RET", station.code, iteration=-1, min_t=-40, max_t=0)
-
-# %%
 plot_correlation_beforeNafter_correction(
-    cd, "RET", "O22", iteration=-1, min_t=15, max_t=25)
-# %%
-for station in cd.stations:
-    if station.code == "O11":
-        continue
-    plot_correlation_beforeNafter_correction(
-        cd, station.code, "O11", iteration=-1, min_t=-30, max_t=30)
+    cd, "RET", "O01", iteration=-1, min_t=-30, max_t=50)
+
 # %%
