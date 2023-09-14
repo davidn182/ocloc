@@ -1,5 +1,6 @@
 
 # %%
+from obspy import Stream
 import pandas as pd
 from obspy.signal.cross_correlation import correlate_template
 import seaborn as sns
@@ -93,8 +94,8 @@ def compute_correlations(st, max_time_to_shift=100):
 
     for i, trace_i in enumerate(st):
         for j, trace_j in enumerate(st):
-            # if i >= j:  # Skip duplicate and self-comparisons
-            #     continue
+            if i == j:  # Skip duplicate and self-comparisons
+                continue
 
             max_corr, time_shift = compute_pairwise_correlation(
                 trace_i, trace_j, max_time_to_shift)
@@ -231,7 +232,7 @@ def read_sac_files(base_dir, station_code, start_time, end_time):
         start time in UTCDateTime format
     end_time: str
         end time in UTCDateTime format
-    
+
     Returns:
     --------
     st: obspy.Stream
@@ -246,7 +247,8 @@ def read_sac_files(base_dir, station_code, start_time, end_time):
     st = obspy.Stream()
 
     if station_code == "*":
-        station_dirs = [os.path.join(base_dir, d) for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
+        station_dirs = [os.path.join(base_dir, d) for d in os.listdir(
+            base_dir) if os.path.isdir(os.path.join(base_dir, d))]
     else:
         station_dirs = [os.path.join(base_dir, station_code)]
 
@@ -272,7 +274,19 @@ def read_sac_files(base_dir, station_code, start_time, end_time):
         print("No SAC file found for the given criteria")
         return None
 
-#%%
+
+# Function to filter Stream by common station codes
+
+
+def filter_stream_by_common_ids(st1, st2):
+    common_ids = set(tr.stats.station for tr in st1).intersection(
+        set(tr.stats.station for tr in st2))
+
+    return Stream([tr for tr in st1 if tr.stats.station in common_ids]), \
+        Stream([tr for tr in st2 if tr.stats.station in common_ids])
+
+
+# %%
 # Your main code
 path = "/Users/localadmin/Dropbox/GitHub/teleseismic_test_ocloc/data/"
 event1_path = os.path.join(path, "gfz2015iatp", "event_obspyck.xml")
@@ -318,10 +332,19 @@ plot_heatmap(time_shifts_diff, cmap='RdBu_r', center=0,
 # %% ------------------- 2nd part -------------------
 # Same but now with the data stored in disk
 base_dir = "/Volumes/kwintsheul/reykjanes/DECIMATED_IMAGE"
-st_event1 = read_sac_files(base_dir, "*", event1.origins[0].time, event1.origins[0].time+3600)
-st_event2 = read_sac_files(base_dir, "*", event2.origins[0].time, event2.origins[0].time+3600)
-#%%
-stations_to_remove = ['O03', 'O04', 'O11']
+st_event1_master = read_sac_files(
+    base_dir, "*", event1.origins[0].time, event1.origins[0].time+3600)
+st_event2_master = read_sac_files(
+    base_dir, "*", event2.origins[0].time, event2.origins[0].time+3600)
+# %%
+# Apply the function to your Streams
+st_event1, st_event2 = filter_stream_by_common_ids(
+    st_event1_master, st_event2_master)
+
+# Now you can assert that the lengths are the same
+assert len(st_event1) == len(st_event2)
+# %%
+# stations_to_remove = ['O03', 'O04', 'O11']
 st_event1 = remove_stations(st_event1, stations_to_remove)
 st_event2 = remove_stations(st_event2, stations_to_remove)
 
@@ -355,6 +378,23 @@ time_shifts_diff = time_shifts_event1 - time_shifts_event2
 
 plot_heatmap(time_shifts_diff, cmap='RdBu_r', center=0,
              title='Difference between time shift(s) matrices')
+
+# %%
+columns_to_exclude = [
+    col for col in time_shifts_diff.columns if col.startswith('O')]
+time_shift_diff_excluding_OBS = time_shifts_diff.drop(
+    columns=columns_to_exclude, axis=1)
+
+plot_heatmap(time_shift_diff_excluding_OBS, cmap='RdBu_r', center=0,
+             title='Difference between time shift(s) matrices')
+
+dt = (event2.origins[0].time - event1.origins[0].time) / 86400.0
+df = pd.DataFrame()
+df['mean_excluding_O'] = time_shifts_diff.drop(
+    columns=columns_to_exclude, axis=1).mean(axis=1)
+df['mean_excluding_O'] = df['mean_excluding_O']  # * 365 / dt
+# Display the first few rows of the modified dataframe
+df
 
 # %%
 station1 = "O02"
