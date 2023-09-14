@@ -1,16 +1,4 @@
 # GLOBAL REQUIREMENTS
--r requirements.txt
-
-# SOFT DEPENDENCIES
-matplotlib
-pandas
-obspy
-numpy
-seaborn
-folium
-pathlib
-jupyter
-jupyter_server
 
 # SETUP RELATED
 setuptools_scm
@@ -32,11 +20,3 @@ nbsphinx
 nbsphinx_link
 pandoc
 sphinx-tabs
-
-# FOR TESTING
-asv
-pytest
-coveralls
-pytest_cov
-pytest_mpl
-pytest_flake8
